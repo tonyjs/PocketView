@@ -1,16 +1,20 @@
 package com.tonyjs.pocketview;
 
 import android.content.Context;
-import android.graphics.Color;
+import android.os.Handler;
+import android.os.Message;
+import android.support.v4.view.GestureDetectorCompat;
+import android.support.v4.view.MotionEventCompat;
+import android.support.v4.view.ViewPager;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
-
-import java.util.ArrayList;
-import java.util.List;
+import android.widget.ScrollView;
+import android.widget.Scroller;
 
 /**
  * Created by tonyjs on 15. 1. 16..
@@ -34,11 +38,13 @@ public class PocketView extends ViewGroup {
         init();
     }
 
+    private PocketGestureDetector mGestureDetector;
     private int mGap;
     private void init() {
         mGap = (int) (getContext().getResources().getDisplayMetrics().density * DEFAULT_GAP);
+        mGestureDetector = new PocketGestureDetector(getContext(), new PocketGestureListener());
+        mScroller = new Scroller(getContext());
     }
-
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
@@ -47,6 +53,14 @@ public class PocketView extends ViewGroup {
         for (int i = 0; i < max; i++) {
             View child = getChildAt(i);
             measureChild(child, widthMeasureSpec, heightMeasureSpec);
+        }
+    }
+
+    @Override
+    public void computeScroll() {
+        if (mScroller.computeScrollOffset()) {
+            scrollTo(mScroller.getCurrX(), mScroller.getCurrY());
+            postInvalidate();
         }
     }
 
@@ -83,6 +97,7 @@ public class PocketView extends ViewGroup {
 
     float mLastY = 0;
     boolean mFirstTouch = true;
+    boolean mDragging = false;
     @Override
     public boolean onTouchEvent(MotionEvent ev) {
         int action = ev.getAction();
@@ -90,9 +105,11 @@ public class PocketView extends ViewGroup {
             case MotionEvent.ACTION_DOWN:
                 mLastY = ev.getY();
                 mFirstTouch = true;
+                mDragging = false;
                 break;
 
             case MotionEvent.ACTION_MOVE:
+                mDragging = true;
                 float y = ev.getY();
                 if (mFirstTouch) {
                     mLastY = y;
@@ -100,7 +117,7 @@ public class PocketView extends ViewGroup {
                 mFirstTouch = false;
 
                 float distanceY = y - mLastY;
-                scroll(distanceY);
+//                scroll(distanceY);
                 mLastY = y;
                 break;
 
@@ -108,18 +125,26 @@ public class PocketView extends ViewGroup {
             case MotionEvent.ACTION_UP:
                 mLastY = 0;
                 mFirstTouch = true;
+                mDragging = false;
                 break;
         }
-
+        mGestureDetector.onTouchEvent(ev);
         return true;
     }
 
     private void scroll(float distanceY) {
-        if (distanceY >= 0) {
-            scrollDown(distanceY);
-        } else {
-            scrollUp(distanceY);
-        }
+//        Log.e("jsp", "dragging = " + mDragging);
+
+//        scrollBy(0, (int) distanceY);
+        int y = (int) (mScroller.getCurrY() + distanceY);
+        Log.e("jsp", "mScroller.getCurrY() - " + mScroller.getCurrY());
+        Log.e("jsp", "y = " + y);
+        mScroller.startScroll(0, 0, 0, (int) distanceY);
+        invalidate();
+//            scrollDown(distanceY);
+//        } else {
+//            scrollUp(distanceY);
+//        }
     }
 
     private void scrollUp(float distanceY) {
@@ -181,12 +206,9 @@ public class PocketView extends ViewGroup {
             return;
         }
 
-        int height = (int) (184 * getContext().getResources().getDisplayMetrics().density);
         for (int i = 0; i < max; i++) {
             View view = mAdapter.getView(i, null, this);
             view.setId(i);
-            LayoutParams params = new LayoutParams(LayoutParams.MATCH_PARENT, height);
-            view.setLayoutParams(params);
             addView(view);
         }
     }
@@ -213,6 +235,112 @@ public class PocketView extends ViewGroup {
 
     private int getSize() {
         return mAdapter != null ? mAdapter.getCount() : 0;
+    }
+
+    class PocketGestureDetector extends GestureDetectorCompat{
+        private PocketGestureListener mListener;
+        public PocketGestureDetector(Context context, PocketGestureListener listener) {
+            super(context, listener);
+            mListener = listener;
+        }
+
+        @Override
+        public boolean onTouchEvent(MotionEvent event) {
+            boolean handled = super.onTouchEvent(event);
+            int action = event.getAction() & MotionEventCompat.ACTION_MASK;
+            if (action == MotionEvent.ACTION_UP) {
+                mListener.dispatchSingleTapUpIfNeed(event);
+            }
+            return handled;
+        }
+
+    }
+
+    class PocketGestureListener extends GestureDetector.SimpleOnGestureListener {
+
+        public void dispatchSingleTapUpIfNeed(MotionEvent e) {
+            if (getSize() > 0) {
+                onSingleTapUp(e);
+            }
+        }
+
+        @Override
+        public boolean onSingleTapUp(MotionEvent e) {
+//            Log.d("jsp", "onSingleTapUp");
+            return true;
+        }
+
+        @Override
+        public void onLongPress(MotionEvent e) {
+            super.onLongPress(e);
+//            Log.d("jsp", "onLongPress");
+        }
+
+        @Override
+        public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
+            scroll(distanceY);
+            return true;
+        }
+
+        @Override
+        public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
+            float e1Y = e1.getY();
+            float e2Y = e2.getY();
+            float distanceY = e2Y - e1Y;
+            Log.e("jsp", "mScroller.getCurrY() - " + mScroller.getCurrY());
+//            mScroller.startScroll(0, mScroller.getCurrY(), 0, -(int) distanceY, 250);
+//            mScroller.computeScrollOffset();
+//            distanceY = (distanceY / 2);
+//            Log.d("jsp", "onFling - " + distanceY);
+//            scroll(-distanceY);
+//            smoothScroll(distanceY);
+            return true;
+        }
+
+        @Override
+        public void onShowPress(MotionEvent e) {
+//            Log.d("jsp", "onShowPress");
+            super.onShowPress(e);
+        }
+
+        @Override
+        public boolean onDown(MotionEvent e) {
+//            Log.d("jsp", "onDown");
+            return true;
+        }
+
+        @Override
+        public boolean onSingleTapConfirmed(MotionEvent e) {
+//            Log.d("jsp", "onSingleTapConfirmed");
+            return true;
+        }
+    }
+
+    private Scroller mScroller;
+
+    private void smoothScroll(float distanceY) {
+        if (distanceY >= 0) {
+
+            smoothScrollDown(distanceY);
+        } else {
+            smoothScrollUp(distanceY);
+        }
+    }
+
+    private void smoothScrollDown(float distanceY) {
+        float y = distanceY;
+        while (y > 0) {
+            scrollDown(y);
+            y /= 2;
+        }
+    }
+
+    private void smoothScrollUp(float distanceY) {
+        float y = distanceY;
+        while (y < 0) {
+            scrollUp(y);
+            y /= 2;
+        }
     }
 
 }

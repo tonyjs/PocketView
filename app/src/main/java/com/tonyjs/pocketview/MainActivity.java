@@ -27,8 +27,8 @@ public class MainActivity extends ActionBarActivity {
     private class PocketAdapter extends BaseAdapter{
         int[] colors = new int[]{
                 Color.BLACK, Color.BLUE, Color.GRAY, Color.RED, Color.YELLOW,
-                Color.rgb(03, 59, 21), Color.MAGENTA, Color.CYAN, Color.GREEN, Color.DKGRAY,
-                Color.rgb(66, 254, 35), Color.rgb(99, 33, 44), Color.rgb(00, 69, 200),
+                Color.rgb(3, 59, 21), Color.MAGENTA, Color.CYAN, Color.GREEN, Color.DKGRAY,
+                Color.rgb(135, 138, 9), Color.rgb(99, 33, 44), Color.rgb(0, 69, 200),
                 Color.rgb(87, 169, 70), Color.rgb(125, 125, 70), Color.rgb(12, 200, 243),
                 Color.rgb(200, 185, 49), Color.rgb(34, 58, 254), Color.rgb(21, 194, 70),
                 Color.rgb(168, 187, 250)};
