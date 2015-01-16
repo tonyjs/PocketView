@@ -56,14 +56,6 @@ public class PocketView extends ViewGroup {
         }
     }
 
-    @Override
-    public void computeScroll() {
-        if (mScroller.computeScrollOffset()) {
-            scrollTo(mScroller.getCurrX(), mScroller.getCurrY());
-            postInvalidate();
-        }
-    }
-
     float mInterceptLastX = 0;
     float mInterceptLastY = 0;
     @Override
@@ -133,18 +125,11 @@ public class PocketView extends ViewGroup {
     }
 
     private void scroll(float distanceY) {
-//        Log.e("jsp", "dragging = " + mDragging);
-
-//        scrollBy(0, (int) distanceY);
-        int y = (int) (mScroller.getCurrY() + distanceY);
-        Log.e("jsp", "mScroller.getCurrY() - " + mScroller.getCurrY());
-        Log.e("jsp", "y = " + y);
-        mScroller.startScroll(0, 0, 0, (int) distanceY);
-        invalidate();
-//            scrollDown(distanceY);
-//        } else {
-//            scrollUp(distanceY);
-//        }
+        if (distanceY >= 0) {
+            scrollDown(distanceY);
+        } else {
+            scrollUp(distanceY);
+        }
     }
 
     private void scrollUp(float distanceY) {
