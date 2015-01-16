@@ -263,7 +263,7 @@ public class PocketView extends ViewGroup {
 
         @Override
         public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
-            scroll(distanceY);
+            scroll(-distanceY);
             return true;
         }
 
