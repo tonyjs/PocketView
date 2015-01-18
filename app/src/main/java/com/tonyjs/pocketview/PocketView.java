@@ -1,6 +1,9 @@
 package com.tonyjs.pocketview;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
 import android.content.Context;
+import android.database.DataSetObserver;
 import android.os.Handler;
 import android.os.Message;
 import android.support.v4.view.GestureDetectorCompat;
@@ -118,6 +121,40 @@ public class PocketView extends ViewGroup {
                 mLastY = 0;
                 mFirstTouch = true;
                 mDragging = false;
+                if (mInAnimToUp) {
+                    int max = getChildCount();
+                    View firstView = getChildAt(0);
+                    int maxHeight = firstView.getHeight() + ((max - 1) * mGap);
+                    int minTop = (getHeight() - getPaddingBottom() - getPaddingTop()) - maxHeight;
+                    for (int i = 0; i < getChildCount(); i++) {
+                        View child = getChildAt(i);
+                        child.animate()
+                                .translationY(minTop);
+                    }
+                    mInAnimToUp = false;
+                }
+                if (mInAnimToDown) {
+                    for (int i = 0; i < getChildCount(); i++) {
+                        View child = getChildAt(i);
+                        child.animate()
+                                .translationY(0);
+                    }
+                    mInAnimToDown = false;
+                }
+//                if (mInScaleToUp) {
+//                    for (int i = 0; i < getChildCount(); i++) {
+//                        View child = getChildAt(i);
+//                        child.setPivotY(child.getHeight());
+//                        child.animate()
+//                                .scaleY(1.0f);
+//                    }
+//                    mInScaleToUp = false;
+//                    break;
+//                }
+//                if (mInScaleToDown) {
+//                    mInScaleToDown = false;
+//                    break;
+//                }
                 break;
         }
         mGestureDetector.onTouchEvent(ev);
@@ -125,6 +162,8 @@ public class PocketView extends ViewGroup {
     }
 
     private void scroll(float distanceY) {
+//        Log.e("jsp", "distanceY = " + distanceY);
+
         if (distanceY >= 0) {
             scrollDown(distanceY);
         } else {
@@ -138,21 +177,46 @@ public class PocketView extends ViewGroup {
             return;
         }
 
-        int parentBottom = getHeight() - getPaddingBottom();
-        View lastView = getChildAt(max - 1);
-        if (lastView.getBottom() <= parentBottom) {
+        View firstView = getChildAt(0);
+        int maxHeight = firstView.getHeight() + ((max - 1) * mGap);
+        int minTop = (getHeight() - getPaddingBottom() - getPaddingTop()) - maxHeight;
+        if (firstView.getTranslationY() <= minTop) {
+            scaleToUp(distanceY);
             return;
         }
 
         for (int i = 0; i < max; i++) {
-            View child = getChildAt(i);
-            int maxBottom = parentBottom - (mGap * ((max - 1) - i));
-            int newBottom = child.getBottom() + (int) distanceY;
+            final View child = getChildAt(i);
+            int childY = (int) child.getTranslationY();
+            int newTop = childY + (int) distanceY;
+            final int top = Math.max(minTop, newTop);
+            child.setTranslationY(top);
+        }
+    }
 
-            int bottom = Math.max(maxBottom, newBottom);
+    boolean mInAnimToUp = false;
+    private void scaleToUp(float distanceY) {
+        if (mInAnimToUp) {
+            return;
+        }
+        final int max = getChildCount();
+        if (max <= 0) {
+            return;
+        }
 
-            int top = bottom - child.getHeight();
-            child.layout(child.getLeft(), top, child.getRight(), top + child.getHeight());
+        mInAnimToUp = true;
+        for (int i = max - 1; i >= 0; i--) {
+            final View child = getChildAt(i);
+            int childY = (int) child.getTranslationY();
+//            int y = (int) distanceY * ((max - 1) * i);
+            int y = childY + ((int) distanceY * ((max - 1) - i));
+            child.animate()
+                    .translationY(y);
+//            int childY = child.getHeight();
+//            float scale = 1.1f + (0.1f * i);
+//            child.setPivotY(childY);
+//            child.animate()
+//                    .scaleY(scale);
         }
     }
 
@@ -162,19 +226,42 @@ public class PocketView extends ViewGroup {
             return;
         }
 
-        int parentTop = getPaddingTop();
         View firstView = getChildAt(0);
-        if (firstView.getTop() >= parentTop) {
+        Log.e("jsp", "firstView.getTranslationY = " + firstView.getTranslationY());
+        if (firstView.getTranslationY() >= 0) {
+            scaleToDown(distanceY);
             return;
         }
 
         for (int i = 0; i < max; i++) {
             View child = getChildAt(i);
-            int minTop = parentTop + (mGap * i);
-            int newTop = child.getTop() + (int) distanceY;
+            int maxTop = 0;
+            int childY = (int) child.getTranslationY();
+            int newTop = childY + (int) distanceY;
+            Log.d("jsp", "maxTop  = " + maxTop);
+            Log.d("jsp", "newTop  = " + newTop);
+            int top = Math.min(maxTop, newTop);
+            Log.e("jsp", "top = " + top);
+            child.setTranslationY(top);
+        }
+    }
 
-            int top = Math.min(minTop, newTop);
-            child.layout(child.getLeft(), top, child.getRight(), top + child.getHeight());
+    boolean mInAnimToDown = false;
+    private void scaleToDown(float distanceY) {
+        if (mInAnimToDown) {
+            return;
+        }
+        final int max = getChildCount();
+        if (max <= 0) {
+            return;
+        }
+
+        mInAnimToDown = true;
+        for (int i = 0; i < max; i++) {
+            final View child = getChildAt(i);
+            int y = (int) distanceY * i;
+            child.animate()
+                    .translationYBy(y);
         }
     }
 
@@ -183,6 +270,12 @@ public class PocketView extends ViewGroup {
     public void setAdapter(BaseAdapter adapter) {
         mAdapter = adapter;
         adaptView();
+        adapter.registerDataSetObserver(new DataSetObserver() {
+            @Override
+            public void onChanged() {
+                adaptView();
+            }
+        });
     }
 
     private void adaptView() {
@@ -277,7 +370,7 @@ public class PocketView extends ViewGroup {
 //            mScroller.computeScrollOffset();
 //            distanceY = (distanceY / 2);
 //            Log.d("jsp", "onFling - " + distanceY);
-//            scroll(-distanceY);
+//            scroll(distanceY);
 //            smoothScroll(distanceY);
             return true;
         }
