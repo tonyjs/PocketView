@@ -3,26 +3,25 @@ package com.tonyjs.pocketview;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.content.Context;
-import android.database.DataSetObserver;
-import android.os.Handler;
-import android.os.Message;
 import android.support.v4.view.GestureDetectorCompat;
 import android.support.v4.view.MotionEventCompat;
-import android.support.v4.view.ViewPager;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.BaseAdapter;
-import android.widget.ScrollView;
-import android.widget.Scroller;
+import android.view.animation.AccelerateInterpolator;
+import android.view.animation.Animation;
+import android.view.animation.DecelerateInterpolator;
+import android.view.animation.LayoutAnimationController;
+import android.view.animation.TranslateAnimation;
 
 /**
  * Created by tonyjs on 15. 1. 16..
  */
-public class PocketView extends ViewGroup {
+public class PocketView extends ViewGroup
+                implements PocketViewAdapter.DataSetObserver{
 
     public static final int DEFAULT_GAP = 48;
 
@@ -46,7 +45,6 @@ public class PocketView extends ViewGroup {
     private void init() {
         mGap = (int) (getContext().getResources().getDisplayMetrics().density * DEFAULT_GAP);
         mGestureDetector = new PocketGestureDetector(getContext(), new PocketGestureListener());
-        mScroller = new Scroller(getContext());
     }
 
     @Override
@@ -59,111 +57,43 @@ public class PocketView extends ViewGroup {
         }
     }
 
-    float mInterceptLastX = 0;
-    float mInterceptLastY = 0;
     @Override
     public boolean onInterceptTouchEvent(MotionEvent ev) {
-        boolean intercept = super.onInterceptTouchEvent(ev);
-        int action = ev.getAction();
-        switch (action) {
-            case MotionEvent.ACTION_DOWN:
-                mInterceptLastX = ev.getX();
-                mInterceptLastY = ev.getY();
-                break;
-
-            case MotionEvent.ACTION_MOVE:
-                float x = ev.getX();
-                float y = ev.getY();
-
-                float mathX = Math.abs(mInterceptLastX - x);
-                float mathY = Math.abs(mInterceptLastY - y);
-
-                intercept = mathY > mathX;
-                break;
-
-            case MotionEvent.ACTION_CANCEL:
-            case MotionEvent.ACTION_UP:
-                mInterceptLastX = 0;
-                mInterceptLastY = 0;
-                break;
+        if (getAdapter() == null || getAdapter().getCount() <= 0) {
+            return false;
         }
-        return intercept;
-    }
-
-    float mLastY = 0;
-    boolean mFirstTouch = true;
-    boolean mDragging = false;
-    @Override
-    public boolean onTouchEvent(MotionEvent ev) {
-        int action = ev.getAction();
-        switch (action) {
-            case MotionEvent.ACTION_DOWN:
-                mLastY = ev.getY();
-                mFirstTouch = true;
-                mDragging = false;
-                break;
-
-            case MotionEvent.ACTION_MOVE:
-                mDragging = true;
-                float y = ev.getY();
-                if (mFirstTouch) {
-                    mLastY = y;
-                }
-                mFirstTouch = false;
-
-                float distanceY = y - mLastY;
-//                scroll(distanceY);
-                mLastY = y;
-                break;
-
-            case MotionEvent.ACTION_CANCEL:
-            case MotionEvent.ACTION_UP:
-                mLastY = 0;
-                mFirstTouch = true;
-                mDragging = false;
-                if (mInAnimToUp) {
-                    int max = getChildCount();
-                    View firstView = getChildAt(0);
-                    int maxHeight = firstView.getHeight() + ((max - 1) * mGap);
-                    int minTop = (getHeight() - getPaddingBottom() - getPaddingTop()) - maxHeight;
-                    for (int i = 0; i < getChildCount(); i++) {
-                        View child = getChildAt(i);
-                        child.animate()
-                                .translationY(minTop);
-                    }
-                    mInAnimToUp = false;
-                }
-                if (mInAnimToDown) {
-                    for (int i = 0; i < getChildCount(); i++) {
-                        View child = getChildAt(i);
-                        child.animate()
-                                .translationY(0);
-                    }
-                    mInAnimToDown = false;
-                }
-//                if (mInScaleToUp) {
-//                    for (int i = 0; i < getChildCount(); i++) {
-//                        View child = getChildAt(i);
-//                        child.setPivotY(child.getHeight());
-//                        child.animate()
-//                                .scaleY(1.0f);
-//                    }
-//                    mInScaleToUp = false;
-//                    break;
-//                }
-//                if (mInScaleToDown) {
-//                    mInScaleToDown = false;
-//                    break;
-//                }
-                break;
-        }
-        mGestureDetector.onTouchEvent(ev);
         return true;
     }
 
-    private void scroll(float distanceY) {
-//        Log.e("jsp", "distanceY = " + distanceY);
+    @Override
+    public boolean onTouchEvent(MotionEvent ev) {
+        return mGestureDetector.onTouchEvent(ev);
+    }
 
+    private void returnToOriginPosition() {
+        if (mInPullToUp) {
+            int max = getChildCount();
+            View firstView = getChildAt(0);
+            int maxHeight = firstView.getHeight() + ((max - 1) * mGap);
+            int minTop = (getHeight() - getPaddingBottom() - getPaddingTop()) - maxHeight;
+            for (int i = 0; i < getChildCount(); i++) {
+                View child = getChildAt(i);
+                child.animate()
+                        .translationY(minTop);
+            }
+            mInPullToUp = false;
+        }
+        if (mInPullToDown) {
+            for (int i = 0; i < getChildCount(); i++) {
+                View child = getChildAt(i);
+                child.animate()
+                        .translationY(0);
+            }
+            mInPullToDown = false;
+        }
+    }
+
+    private void scroll(float distanceY) {
         if (distanceY >= 0) {
             scrollDown(distanceY);
         } else {
@@ -178,10 +108,16 @@ public class PocketView extends ViewGroup {
         }
 
         View firstView = getChildAt(0);
+
         int maxHeight = firstView.getHeight() + ((max - 1) * mGap);
+        int parentHeight = getHeight() - getPaddingBottom() - getPaddingTop();
+        if (maxHeight <= parentHeight) {
+            return;
+        }
+
         int minTop = (getHeight() - getPaddingBottom() - getPaddingTop()) - maxHeight;
         if (firstView.getTranslationY() <= minTop) {
-            scaleToUp(distanceY);
+            pullToUp(distanceY);
             return;
         }
 
@@ -194,9 +130,9 @@ public class PocketView extends ViewGroup {
         }
     }
 
-    boolean mInAnimToUp = false;
-    private void scaleToUp(float distanceY) {
-        if (mInAnimToUp) {
+    boolean mInPullToUp = false;
+    private void pullToUp(float distanceY) {
+        if (mInPullToUp) {
             return;
         }
         final int max = getChildCount();
@@ -204,19 +140,13 @@ public class PocketView extends ViewGroup {
             return;
         }
 
-        mInAnimToUp = true;
+        mInPullToUp = true;
         for (int i = max - 1; i >= 0; i--) {
             final View child = getChildAt(i);
             int childY = (int) child.getTranslationY();
-//            int y = (int) distanceY * ((max - 1) * i);
-            int y = childY + ((int) distanceY * ((max - 1) - i));
+            int y = childY + ((int) distanceY * ((max) - i));
             child.animate()
                     .translationY(y);
-//            int childY = child.getHeight();
-//            float scale = 1.1f + (0.1f * i);
-//            child.setPivotY(childY);
-//            child.animate()
-//                    .scaleY(scale);
         }
     }
 
@@ -227,9 +157,8 @@ public class PocketView extends ViewGroup {
         }
 
         View firstView = getChildAt(0);
-        Log.e("jsp", "firstView.getTranslationY = " + firstView.getTranslationY());
         if (firstView.getTranslationY() >= 0) {
-            scaleToDown(distanceY);
+            pullToDown(distanceY);
             return;
         }
 
@@ -238,17 +167,14 @@ public class PocketView extends ViewGroup {
             int maxTop = 0;
             int childY = (int) child.getTranslationY();
             int newTop = childY + (int) distanceY;
-            Log.d("jsp", "maxTop  = " + maxTop);
-            Log.d("jsp", "newTop  = " + newTop);
             int top = Math.min(maxTop, newTop);
-            Log.e("jsp", "top = " + top);
             child.setTranslationY(top);
         }
     }
 
-    boolean mInAnimToDown = false;
-    private void scaleToDown(float distanceY) {
-        if (mInAnimToDown) {
+    boolean mInPullToDown = false;
+    private void pullToDown(float distanceY) {
+        if (mInPullToDown) {
             return;
         }
         final int max = getChildCount();
@@ -256,36 +182,42 @@ public class PocketView extends ViewGroup {
             return;
         }
 
-        mInAnimToDown = true;
+        mInPullToDown = true;
         for (int i = 0; i < max; i++) {
             final View child = getChildAt(i);
-            int y = (int) distanceY * i;
+            int y = (int) distanceY * (i + 1);
+
             child.animate()
                     .translationYBy(y);
         }
     }
 
-    private BaseAdapter mAdapter;
-
-    public void setAdapter(BaseAdapter adapter) {
+    private PocketViewAdapter mAdapter;
+    public PocketViewAdapter getAdapter() {
+        return mAdapter;
+    }
+    public void setAdapter(PocketViewAdapter adapter) {
         mAdapter = adapter;
+        adapter.registerDataSetObserver(this);
         adaptView();
-        adapter.registerDataSetObserver(new DataSetObserver() {
-            @Override
-            public void onChanged() {
-                adaptView();
-            }
-        });
+//        adapter.registerDataSetObserver(new DataSetObserver() {
+//            @Override
+//            public void onChanged() {
+//                adaptView();
+//            }
+//        });
     }
 
     private void adaptView() {
+        removeAllViews();
+
         int max = getSize();
         if (max <= 0) {
             return;
         }
 
         for (int i = 0; i < max; i++) {
-            View view = mAdapter.getView(i, null, this);
+            View view = mAdapter.getView(i, this);
             view.setId(i);
             addView(view);
         }
@@ -293,8 +225,8 @@ public class PocketView extends ViewGroup {
 
     @Override
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
-        l = l + getPaddingLeft();
-        r = r - getPaddingRight();
+        final int left = l + getPaddingLeft();
+        final int right = r - getPaddingRight();
 
         int max = getChildCount();
         if (max <= 0) {
@@ -303,16 +235,82 @@ public class PocketView extends ViewGroup {
 
         for (int i = 0; i < max; i++) {
             int gap = mGap * i;
-            View child = getChildAt(i);
+            final View child = getChildAt(i);
             LayoutParams params = child.getLayoutParams();
-            int height = params.height;
-            int top = getPaddingTop() + gap;
-            child.layout(l, top, r, top + height);
+            final int height = params.height;
+            final int top = getPaddingTop() + gap;
+            child.layout(left, top, right, top + height);
         }
     }
 
     private int getSize() {
         return mAdapter != null ? mAdapter.getCount() : 0;
+    }
+
+    @Override
+    public void notifyDataSetChanged() {
+        setDefaultAddLayoutAnimation();
+        adaptView();
+    }
+
+    @Override
+    public void notifyItemAdded() {
+        int max = getSize();
+        if (max <= 0) {
+            return;
+        }
+
+        final int top = getPaddingTop() + (mGap * (getSize() - 1));
+
+        int position = (getSize() - 1);
+        final View view = mAdapter.getView(position, this);
+        view.setId(mAdapter.getItemId(position));
+        addView(view);
+        view.layout(getPaddingLeft(), top, getRight(), top + view.getHeight());
+//        view.setTranslationY(getBottom());
+//        view.animate()
+//                .setInterpolator(new DecelerateInterpolator())
+//                .setDuration(250)
+//                .translationYBy(0)
+//                .setListener(new AnimatorListenerAdapter() {
+//                    @Override
+//                    public void onAnimationEnd(Animator animation) {
+//                    }
+//                });
+    }
+
+    @Override
+    public void notifyItemRemoved(int position) {
+        Log.e("jsp", "position = " + position);
+        int max = getSize() + 1;
+        Log.e("jsp", "max = " + max);
+        if (max > position) {
+            final View target = getChildAt(position);
+            target.animate()
+                    .setInterpolator(new AccelerateInterpolator())
+                    .translationX(getRight())
+                    .setDuration(250)
+                    .setListener(new AnimatorListenerAdapter() {
+                        @Override
+                        public void onAnimationEnd(Animator animation) {
+                            Log.e("jsp", "onAnimationEnd");
+                            removeView(target);
+                            postInvalidate();
+                        }
+                    });
+        }
+    }
+
+    private void setDefaultAddLayoutAnimation() {
+        Animation animation = new TranslateAnimation(
+                Animation.RELATIVE_TO_PARENT, 0.0f,
+                Animation.RELATIVE_TO_PARENT, 0.0f,
+                Animation.RELATIVE_TO_PARENT, 1.0f,
+                Animation.RELATIVE_TO_PARENT, 0.0f);
+        animation.setDuration(250);
+
+        LayoutAnimationController controller = new LayoutAnimationController(animation, 0.5f);
+        setLayoutAnimation(controller);
     }
 
     class PocketGestureDetector extends GestureDetectorCompat{
@@ -331,7 +329,6 @@ public class PocketView extends ViewGroup {
             }
             return handled;
         }
-
     }
 
     class PocketGestureListener extends GestureDetector.SimpleOnGestureListener {
@@ -344,7 +341,8 @@ public class PocketView extends ViewGroup {
 
         @Override
         public boolean onSingleTapUp(MotionEvent e) {
-//            Log.d("jsp", "onSingleTapUp");
+            Log.d("jsp", "onSingleTapUp");
+            returnToOriginPosition();
             return true;
         }
 
@@ -356,22 +354,23 @@ public class PocketView extends ViewGroup {
 
         @Override
         public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
+            if (Math.abs(distanceX) >= Math.abs(distanceY)) {
+                return false;
+            }
             scroll(-distanceY);
             return true;
         }
 
         @Override
         public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
+            if (Math.abs(velocityX) >= Math.abs(velocityY)) {
+                return false;
+            }
             float e1Y = e1.getY();
             float e2Y = e2.getY();
             float distanceY = e2Y - e1Y;
-            Log.e("jsp", "mScroller.getCurrY() - " + mScroller.getCurrY());
-//            mScroller.startScroll(0, mScroller.getCurrY(), 0, -(int) distanceY, 250);
-//            mScroller.computeScrollOffset();
-//            distanceY = (distanceY / 2);
-//            Log.d("jsp", "onFling - " + distanceY);
-//            scroll(distanceY);
-//            smoothScroll(distanceY);
+
+            fling(distanceY);
             return true;
         }
 
@@ -394,30 +393,68 @@ public class PocketView extends ViewGroup {
         }
     }
 
-    private Scroller mScroller;
-
-    private void smoothScroll(float distanceY) {
+    private void fling(float distanceY) {
+//        Log.e("jsp", "fling = " + distanceY);
         if (distanceY >= 0) {
-
-            smoothScrollDown(distanceY);
+            flingDown(distanceY * 2);
         } else {
-            smoothScrollUp(distanceY);
+            flingUp(distanceY * 2);
         }
     }
 
-    private void smoothScrollDown(float distanceY) {
-        float y = distanceY;
-        while (y > 0) {
-            scrollDown(y);
-            y /= 2;
+    private void flingUp(float distanceY) {
+        final int max = getChildCount();
+        if (max <= 0) {
+            return;
+        }
+
+        View firstView = getChildAt(0);
+        int maxHeight = firstView.getHeight() + ((max - 1) * mGap);
+        int parentHeight = getHeight() - getPaddingBottom() - getPaddingTop();
+        if (maxHeight <= parentHeight) {
+            return;
+        }
+
+        int minTop = (getHeight() - getPaddingBottom() - getPaddingTop()) - maxHeight;
+        if (firstView.getTranslationY() <= minTop) {
+            pullToUp(distanceY);
+            return;
+        }
+
+        for (int i = 0; i < max; i++) {
+            View child = getChildAt(i);
+            int childY = (int) child.getTranslationY();
+            int newTop = childY + (int) distanceY;
+            final int top = Math.max(minTop, newTop);
+            child.animate()
+                    .setInterpolator(new DecelerateInterpolator())
+                    .setDuration((int) Math.abs(distanceY))
+                    .translationY(top);
         }
     }
 
-    private void smoothScrollUp(float distanceY) {
-        float y = distanceY;
-        while (y < 0) {
-            scrollUp(y);
-            y /= 2;
+    private void flingDown(float distanceY) {
+        final int max = getChildCount();
+        if (max <= 0) {
+            return;
+        }
+
+        View firstView = getChildAt(0);
+        if (firstView.getTranslationY() >= 0) {
+            pullToDown(distanceY);
+            return;
+        }
+
+        for (int i = 0; i < max; i++) {
+            View child = getChildAt(i);
+            int maxTop = 0;
+            int childY = (int) child.getTranslationY();
+            int newTop = childY + (int) distanceY;
+            int top = Math.min(maxTop, newTop);
+            child.animate()
+                    .setInterpolator(new DecelerateInterpolator())
+                    .setDuration((int) Math.abs(distanceY))
+                    .translationY(top);
         }
     }
 

@@ -3,19 +3,19 @@ package com.tonyjs.pocketview;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Color;
-import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
+import android.support.v7.app.ActionBarActivity;
 import android.support.v7.widget.CardView;
-import android.text.TextUtils;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AbsListView;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
-import android.widget.TextView;
+import android.widget.ListView;
 import android.widget.Toast;
+
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.bitmap_recycle.BitmapPool;
 import com.bumptech.glide.load.resource.bitmap.BitmapTransformation;
@@ -25,25 +25,25 @@ import com.tonyjs.pocketview.model.Images;
 import com.tonyjs.pocketview.request.ApiInterface;
 import com.tonyjs.pocketview.response.NewsFeedResponse;
 import com.tonyjs.pocketview.widget.RoundedDrawable;
+
+import java.util.ArrayList;
+
 import retrofit.Callback;
 import retrofit.RestAdapter;
 import retrofit.RetrofitError;
 import retrofit.client.Response;
 
-import java.util.ArrayList;
 
+public class ListActivity extends ActionBarActivity {
 
-public class MainActivity extends ActionBarActivity {
-
-    private PocketAdapter mAdapter;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_list);
 
-        PocketView pocketView = (PocketView) findViewById(R.id.pocket_view);
-        mAdapter = new PocketAdapter();
-        pocketView.setAdapter(mAdapter);
+        ListView listView = (ListView) findViewById(R.id.list_view);
+        final PocketAdapter adapter = new PocketAdapter();
+        listView.setAdapter(adapter);
         RestAdapter restAdapter = new RestAdapter.Builder()
                 .setLogLevel(RestAdapter.LogLevel.FULL)
                 .setEndpoint(ApiInterface.END_POINT)
@@ -55,11 +55,7 @@ public class MainActivity extends ActionBarActivity {
             public void success(NewsFeedResponse newsFeedResponse, Response response) {
 //                Toast.makeText(getApplicationContext(), newsFeedResponse.toString(), Toast.LENGTH_SHORT).show();
                 ArrayList<Feed> items = newsFeedResponse.getData();
-                ArrayList<Feed> items2 = new ArrayList<Feed>();
-                for (int i = 0; i < 5; i++) {
-                    items2.add(items.get(i));
-                }
-                mAdapter.setItems(items2);
+                adapter.setItems(items);
             }
 
             @Override
@@ -69,9 +65,32 @@ public class MainActivity extends ActionBarActivity {
         });
     }
 
-    private class PocketAdapter extends PocketViewAdapter<Feed>{
+    private class PocketAdapter extends BaseAdapter{
+        private ArrayList<Feed> mItems;
+
+        public void setItems(ArrayList<Feed> items){
+            mItems = items;
+            notifyDataSetChanged();
+        }
+
         @Override
-        public View getView(int position, ViewGroup parent) {
+        public int getCount() {
+            return mItems != null ? 4 : 0;
+        }
+
+        @Override
+        public Feed getItem(int position) {
+            return getCount() > position ?
+                    mItems.get(position) : null;
+        }
+
+        @Override
+        public long getItemId(int position) {
+            return position;
+        }
+
+        @Override
+        public View getView(int position, View convertView, ViewGroup parent) {
             int color = Color.BLACK;
             switch (position % 4) {
                 case 1:
@@ -91,62 +110,21 @@ public class MainActivity extends ActionBarActivity {
                     images.getStandard() : null;
 
             String url = standard != null ? standard.getUrl() : null;
+            if (convertView == null) {
+                convertView = getLayoutInflater().inflate(
+                        R.layout.item_list_with_image, parent, false);
+            }
 
-            View view = getLayoutInflater().inflate(
-                    R.layout.item_pocket_with_image, parent, false);
-            CardView layoutBackground = (CardView) view.findViewById(R.id.layout_background);
+            if (position == 0) {
+                convertView.setTranslationY(0);
+            } else {
+                convertView.setTranslationY((int) -(136 * getResources().getDisplayMetrics().density));
+            }
+
+            CardView layoutBackground = (CardView) convertView.findViewById(R.id.layout_background);
             layoutBackground.setCardBackgroundColor(color);
-//                Log.d("jsp", "layoutBackground.getCardElevation() - " + layoutBackground.getCardElevation());
-//                layoutBackground.setCardElevation(15);
-//                layoutBackground.setBackgroundColor(color);
-//                ImageView ivThumb = (ImageView) convertView.findViewById(R.id.iv_thumb);
-//                if (!TextUtils.isEmpty(url)) {
-//                    loadImage(ivThumb, url);
-//                } else {
-//                    ivThumb.setImageDrawable(null);
-//                }
-            return view;
+            return convertView;
         }
-
-//        @Override
-//        public View getView(int position, View convertView, ViewGroup parent) {
-//            int color = Color.BLACK;
-//            switch (position % 4) {
-//                case 1:
-//                    color = Color.BLUE;
-//                    break;
-//                case 2:
-//                    color = Color.GRAY;
-//                    break;
-//                case 3:
-//                    color = Color.RED;
-//                    break;
-//            }
-//
-//            Feed item = getItem(position);
-//            Images images = item.getImages();
-//            ImageResolution standard = images != null ?
-//                    images.getStandard() : null;
-//
-//            String url = standard != null ? standard.getUrl() : null;
-//
-//            if (convertView == null) {
-//                convertView = getLayoutInflater().inflate(
-//                        R.layout.item_pocket_with_image, parent, false);
-//                CardView layoutBackground = (CardView) convertView.findViewById(R.id.layout_background);
-//                layoutBackground.setCardBackgroundColor(color);
-////                Log.d("jsp", "layoutBackground.getCardElevation() - " + layoutBackground.getCardElevation());
-////                layoutBackground.setCardElevation(15);
-////                layoutBackground.setBackgroundColor(color);
-////                ImageView ivThumb = (ImageView) convertView.findViewById(R.id.iv_thumb);
-////                if (!TextUtils.isEmpty(url)) {
-////                    loadImage(ivThumb, url);
-////                } else {
-////                    ivThumb.setImageDrawable(null);
-////                }
-//            }
-//            return convertView;
-//        }
     }
 
     private void loadImage(ImageView ivThumb, String url) {
@@ -250,9 +228,6 @@ public class MainActivity extends ActionBarActivity {
 
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_settings) {
-//            mAdapter.setCount(mAdapter.getCount() + 1);
-            mAdapter.addItem(mAdapter.getItem(0));
-//            mAdapter.removeItem(mAdapter.getCount() - 1);
             return true;
         }
 
