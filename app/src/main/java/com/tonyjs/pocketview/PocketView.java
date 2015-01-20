@@ -516,7 +516,8 @@ public class PocketView extends ViewGroup
             child.animate()
                 .setInterpolator(new DecelerateInterpolator())
                 .setStartDelay(0)
-                .setDuration((int) Math.abs(distanceY))
+//                .setDuration((int) Math.abs(distanceY))
+                .setDuration(250)
                 .translationY(top)
                 .setListener(null);
         }
@@ -543,7 +544,8 @@ public class PocketView extends ViewGroup
             child.animate()
                 .setInterpolator(new DecelerateInterpolator())
                 .setStartDelay(0)
-                .setDuration((int) Math.abs(distanceY))
+//                .setDuration((int) Math.abs(distanceY))
+                .setDuration(250)
                 .translationY(top)
                 .setListener(null);
         }
