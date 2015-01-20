@@ -158,7 +158,7 @@ public class PocketView extends ViewGroup
             int childY = (int) child.getTranslationY();
             int y = childY + ((int) distanceY * ((max) - i));
             child.animate()
-                .setDuration(50)
+                .setDuration(100)
                 .setInterpolator(null)
                 .setStartDelay(0)
                 .translationY(y)
@@ -205,10 +205,8 @@ public class PocketView extends ViewGroup
             final View child = getChildAt(i);
             int y = (int) distanceY * (i + 1);
 
-            int translateY = (int) child.getTranslationY();
-
             child.animate()
-                .setDuration(50)
+                .setDuration(100)
                 .setInterpolator(null)
                 .setStartDelay(0)
                 .translationYBy(y)
@@ -489,9 +487,9 @@ public class PocketView extends ViewGroup
 
     private void fling(float distanceY) {
         if (distanceY >= 0) {
-            flingDown(distanceY * 2);
+            flingDown(distanceY * 1.5f);
         } else {
-            flingUp(distanceY * 2);
+            flingUp(distanceY * 1.5f);
         }
     }
 
