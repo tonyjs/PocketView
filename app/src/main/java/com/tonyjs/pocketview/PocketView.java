@@ -3,6 +3,7 @@ package com.tonyjs.pocketview;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.content.Context;
+import android.graphics.Canvas;
 import android.support.v4.view.GestureDetectorCompat;
 import android.support.v4.view.MotionEventCompat;
 import android.util.AttributeSet;
@@ -11,6 +12,8 @@ import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewPropertyAnimator;
+import android.view.animation.AccelerateDecelerateInterpolator;
 import android.view.animation.AccelerateInterpolator;
 import android.view.animation.Animation;
 import android.view.animation.DecelerateInterpolator;
@@ -43,6 +46,7 @@ public class PocketView extends ViewGroup
     private PocketGestureDetector mGestureDetector;
     private int mGap;
     private void init() {
+        setWillNotDraw(false);
         mGap = (int) (getContext().getResources().getDisplayMetrics().density * DEFAULT_GAP);
         mGestureDetector = new PocketGestureDetector(getContext(), new PocketGestureListener());
     }
@@ -79,7 +83,11 @@ public class PocketView extends ViewGroup
             for (int i = 0; i < getChildCount(); i++) {
                 View child = getChildAt(i);
                 child.animate()
-                        .translationY(minTop);
+                    .setInterpolator(null)
+                    .setDuration(250)
+                    .setStartDelay(0)
+                    .translationY(minTop)
+                    .setListener(null);
             }
             mInPullToUp = false;
         }
@@ -87,7 +95,11 @@ public class PocketView extends ViewGroup
             for (int i = 0; i < getChildCount(); i++) {
                 View child = getChildAt(i);
                 child.animate()
-                        .translationY(0);
+                    .setInterpolator(null)
+                    .setDuration(250)
+                    .setStartDelay(0)
+                    .translationY(0)
+                    .setListener(null);
             }
             mInPullToDown = false;
         }
@@ -146,7 +158,11 @@ public class PocketView extends ViewGroup
             int childY = (int) child.getTranslationY();
             int y = childY + ((int) distanceY * ((max) - i));
             child.animate()
-                    .translationY(y);
+                .setDuration(50)
+                .setInterpolator(null)
+                .setStartDelay(0)
+                .translationY(y)
+                .setListener(null);
         }
     }
 
@@ -158,9 +174,11 @@ public class PocketView extends ViewGroup
 
         View firstView = getChildAt(0);
         if (firstView.getTranslationY() >= 0) {
+//            Log.e("jsp", "pullToDown");
             pullToDown(distanceY);
             return;
         }
+//        Log.e("jsp", "scrollDown");
 
         for (int i = 0; i < max; i++) {
             View child = getChildAt(i);
@@ -187,8 +205,14 @@ public class PocketView extends ViewGroup
             final View child = getChildAt(i);
             int y = (int) distanceY * (i + 1);
 
+            int translateY = (int) child.getTranslationY();
+
             child.animate()
-                    .translationYBy(y);
+                .setDuration(50)
+                .setInterpolator(null)
+                .setStartDelay(0)
+                .translationYBy(y)
+                .setListener(null);
         }
     }
 
@@ -200,18 +224,12 @@ public class PocketView extends ViewGroup
         mAdapter = adapter;
         adapter.registerDataSetObserver(this);
         adaptView();
-//        adapter.registerDataSetObserver(new DataSetObserver() {
-//            @Override
-//            public void onChanged() {
-//                adaptView();
-//            }
-//        });
     }
 
     private void adaptView() {
         removeAllViews();
 
-        int max = getSize();
+        int max = getItemCount();
         if (max <= 0) {
             return;
         }
@@ -239,81 +257,169 @@ public class PocketView extends ViewGroup
             LayoutParams params = child.getLayoutParams();
             final int height = params.height;
             final int top = getPaddingTop() + gap;
+            final int originTop = child.getTop();
+            if (originTop <= 0) {
+                child.setVisibility(View.INVISIBLE);
+            }
             child.layout(left, top, right, top + height);
         }
     }
 
-    private int getSize() {
+    @Override
+    protected void onDraw(Canvas canvas) {
+        super.onDraw(canvas);
+        int max = getChildCount();
+        if (max <= 0) {
+            return;
+        }
+
+        if (mAnimateFirst) {
+            layoutWithAnimateAtFirst();
+            return;
+        }
+
+        layoutWithAnimation();
+    }
+
+    private boolean mAnimateFirst = true;
+    private void layoutWithAnimateAtFirst() {
+        final int max = getChildCount();
+        for (int i = 0; i < max; i++) {
+            final View child = getChildAt(i);
+            final int index = i;
+            int delay = 100 * i;
+            if (child.getVisibility() != View.VISIBLE) {
+                child.setTranslationY(getBottom());
+                child.animate()
+                    .setInterpolator(new DecelerateInterpolator())
+                    .setStartDelay(delay)
+                    .setDuration(250)
+                    .translationY(0)
+                    .setListener(new AnimatorListenerAdapter() {
+                        @Override
+                        public void onAnimationStart(Animator animation) {
+                            if (child == null) {
+                                return;
+                            }
+                            child.setVisibility(View.VISIBLE);
+                        }
+
+                        @Override
+                        public void onAnimationEnd(Animator animation) {
+                            Log.e("jsp", "onAnimationEnd");
+                            if (index == max - 1) {
+                                mAnimateFirst = false;
+                            }
+                        }
+                    });
+            }
+        }
+    }
+
+    private void layoutWithAnimation() {
+        int max = getChildCount();
+        for (int i = 0; i < max; i++) {
+            final View child = getChildAt(i);
+            if (child.getVisibility() != View.VISIBLE) {
+                child.setTranslationX(getRight());
+                child.animate()
+                    .setInterpolator(new AccelerateDecelerateInterpolator())
+                    .setStartDelay(0)
+                    .setDuration(250)
+                    .translationX(0)
+                    .setListener(new AnimatorListenerAdapter() {
+                        @Override
+                        public void onAnimationStart(Animator animation) {
+                            if (child == null) {
+                                return;
+                            }
+                            child.setVisibility(View.VISIBLE);
+                        }
+
+                        @Override
+                        public void onAnimationCancel(Animator animation) {
+                            if (child == null) {
+                                return;
+                            }
+                            animation.setInterpolator(null);
+                            child.setVisibility(View.VISIBLE);
+                        }
+                    });
+            }
+        }
+    }
+
+    private int getItemCount() {
         return mAdapter != null ? mAdapter.getCount() : 0;
     }
 
     @Override
     public void notifyDataSetChanged() {
-        setDefaultAddLayoutAnimation();
         adaptView();
     }
 
     @Override
     public void notifyItemAdded() {
-        int max = getSize();
-        if (max <= 0) {
+        int position = (getItemCount() - 1);
+        final View view = mAdapter.getView(position, this);
+        view.setId(mAdapter.getItemId(position));
+        addView(view, 0);
+    }
+
+    private boolean mInItemRemoved = false;
+    @Override
+    public void notifyItemRemoved(final int position) {
+        int max = getItemCount();
+        if (position >= max) {
             return;
         }
 
-        final int top = getPaddingTop() + (mGap * (getSize() - 1));
-
-        int position = (getSize() - 1);
-        final View view = mAdapter.getView(position, this);
-        view.setId(mAdapter.getItemId(position));
-        addView(view);
-        view.layout(getPaddingLeft(), top, getRight(), top + view.getHeight());
-//        view.setTranslationY(getBottom());
-//        view.animate()
-//                .setInterpolator(new DecelerateInterpolator())
-//                .setDuration(250)
-//                .translationYBy(0)
-//                .setListener(new AnimatorListenerAdapter() {
-//                    @Override
-//                    public void onAnimationEnd(Animator animation) {
-//                    }
-//                });
-    }
-
-    @Override
-    public void notifyItemRemoved(int position) {
-        Log.e("jsp", "position = " + position);
-        int max = getSize() + 1;
-        Log.e("jsp", "max = " + max);
-        if (max > position) {
-            final View target = getChildAt(position);
-            target.animate()
-                    .setInterpolator(new AccelerateInterpolator())
-                    .translationX(getRight())
-                    .setDuration(250)
-                    .setListener(new AnimatorListenerAdapter() {
-                        @Override
-                        public void onAnimationEnd(Animator animation) {
-                            Log.e("jsp", "onAnimationEnd");
-                            removeView(target);
-                            postInvalidate();
-                        }
-                    });
+        if (mInItemRemoved) {
+            return;
         }
+
+        mInItemRemoved = true;
+        final View target = getChildAt(position);
+        target.animate()
+            .setInterpolator(new AccelerateInterpolator())
+            .setStartDelay(0)
+            .setDuration(250)
+            .translationX(getRight())
+            .setListener(new AnimatorListenerAdapter() {
+                @Override
+                public void onAnimationCancel(Animator animation) {
+                    removeItem(position, target);
+                }
+
+                @Override
+                public void onAnimationPause(Animator animation) {
+                    removeItem(position, target);
+                }
+
+                @Override
+                public void onAnimationEnd(Animator animation) {
+                    removeItem(position, target);
+                }
+            });
     }
 
-    private void setDefaultAddLayoutAnimation() {
-        Animation animation = new TranslateAnimation(
-                Animation.RELATIVE_TO_PARENT, 0.0f,
-                Animation.RELATIVE_TO_PARENT, 0.0f,
-                Animation.RELATIVE_TO_PARENT, 1.0f,
-                Animation.RELATIVE_TO_PARENT, 0.0f);
-        animation.setDuration(250);
+    private void removeItem(int position, View target) {
+        if (target == null) {
+            return;
+        }
 
-        LayoutAnimationController controller = new LayoutAnimationController(animation, 0.5f);
-        setLayoutAnimation(controller);
+        if (getChildCount() <= 0) {
+            mAdapter.getItems().clear();
+            mInItemRemoved = false;
+            return;
+        }
+
+        removeView(target);
+        mAdapter.getItems().remove(position);
+        mInItemRemoved = false;
     }
 
-    class PocketGestureDetector extends GestureDetectorCompat{
+    private class PocketGestureDetector extends GestureDetectorCompat{
         private PocketGestureListener mListener;
         public PocketGestureDetector(Context context, PocketGestureListener listener) {
             super(context, listener);
@@ -331,25 +437,19 @@ public class PocketView extends ViewGroup
         }
     }
 
-    class PocketGestureListener extends GestureDetector.SimpleOnGestureListener {
+    private class PocketGestureListener extends GestureDetector.SimpleOnGestureListener {
 
         public void dispatchSingleTapUpIfNeed(MotionEvent e) {
-            if (getSize() > 0) {
+            if (getItemCount() > 0) {
                 onSingleTapUp(e);
             }
         }
 
         @Override
         public boolean onSingleTapUp(MotionEvent e) {
-            Log.d("jsp", "onSingleTapUp");
+//            Log.d("jsp", "onSingleTapUp");
             returnToOriginPosition();
             return true;
-        }
-
-        @Override
-        public void onLongPress(MotionEvent e) {
-            super.onLongPress(e);
-//            Log.d("jsp", "onLongPress");
         }
 
         @Override
@@ -375,12 +475,6 @@ public class PocketView extends ViewGroup
         }
 
         @Override
-        public void onShowPress(MotionEvent e) {
-//            Log.d("jsp", "onShowPress");
-            super.onShowPress(e);
-        }
-
-        @Override
         public boolean onDown(MotionEvent e) {
 //            Log.d("jsp", "onDown");
             return true;
@@ -394,7 +488,6 @@ public class PocketView extends ViewGroup
     }
 
     private void fling(float distanceY) {
-//        Log.e("jsp", "fling = " + distanceY);
         if (distanceY >= 0) {
             flingDown(distanceY * 2);
         } else {
@@ -427,9 +520,11 @@ public class PocketView extends ViewGroup
             int newTop = childY + (int) distanceY;
             final int top = Math.max(minTop, newTop);
             child.animate()
-                    .setInterpolator(new DecelerateInterpolator())
-                    .setDuration((int) Math.abs(distanceY))
-                    .translationY(top);
+                .setInterpolator(new DecelerateInterpolator())
+                .setStartDelay(0)
+                .setDuration((int) Math.abs(distanceY))
+                .translationY(top)
+                .setListener(null);
         }
     }
 
@@ -452,9 +547,11 @@ public class PocketView extends ViewGroup
             int newTop = childY + (int) distanceY;
             int top = Math.min(maxTop, newTop);
             child.animate()
-                    .setInterpolator(new DecelerateInterpolator())
-                    .setDuration((int) Math.abs(distanceY))
-                    .translationY(top);
+                .setInterpolator(new DecelerateInterpolator())
+                .setStartDelay(0)
+                .setDuration((int) Math.abs(distanceY))
+                .translationY(top)
+                .setListener(null);
         }
     }
 

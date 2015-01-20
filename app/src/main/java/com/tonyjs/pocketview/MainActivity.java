@@ -86,9 +86,8 @@ public class MainActivity extends ActionBarActivity {
             }
 
             Feed item = getItem(position);
-            Images images = item.getImages();
-            ImageResolution standard = images != null ?
-                    images.getStandard() : null;
+            Images images = item != null ? item.getImages() : null;
+            ImageResolution standard = images != null ? images.getStandard() : null;
 
             String url = standard != null ? standard.getUrl() : null;
 
@@ -249,10 +248,13 @@ public class MainActivity extends ActionBarActivity {
         int id = item.getItemId();
 
         //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-//            mAdapter.setCount(mAdapter.getCount() + 1);
+        if (id == R.id.action_add) {
             mAdapter.addItem(mAdapter.getItem(0));
-//            mAdapter.removeItem(mAdapter.getCount() - 1);
+            return true;
+        }
+
+        if (id == R.id.action_remove) {
+            mAdapter.removeItem(0);
             return true;
         }
 

@@ -62,12 +62,16 @@ public abstract class PocketViewAdapter<T> {
             return;
         }
 
-        if (mItems.size() <= 0) {
-            return;
-        }
-
-        mItems.remove(position);
+//        if (mItems.size() <= 0) {
+//            return;
+//        }
+//
+//        mItems.remove(position);
         notifyItemRemoved(position);
+    }
+
+    public List<T> getItems() {
+        return mItems;
     }
 
     public abstract View getView(int position, ViewGroup parent);
