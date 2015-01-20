@@ -174,11 +174,9 @@ public class PocketView extends ViewGroup
 
         View firstView = getChildAt(0);
         if (firstView.getTranslationY() >= 0) {
-//            Log.e("jsp", "pullToDown");
             pullToDown(distanceY);
             return;
         }
-//        Log.e("jsp", "scrollDown");
 
         for (int i = 0; i < max; i++) {
             View child = getChildAt(i);
@@ -304,7 +302,6 @@ public class PocketView extends ViewGroup
 
                         @Override
                         public void onAnimationEnd(Animator animation) {
-                            Log.e("jsp", "onAnimationEnd");
                             if (index == max - 1) {
                                 mAnimateFirst = false;
                             }
@@ -339,7 +336,6 @@ public class PocketView extends ViewGroup
                             if (child == null) {
                                 return;
                             }
-                            animation.setInterpolator(null);
                             child.setVisibility(View.VISIBLE);
                         }
                     });
