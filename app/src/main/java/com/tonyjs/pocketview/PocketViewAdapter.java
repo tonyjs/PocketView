@@ -52,8 +52,9 @@ public abstract class PocketViewAdapter<T> {
         return mItems.size() > position ? mItems.get(position) : null;
     }
 
+    // Basic - Add Item On Top
     public void addItem(T item) {
-        mItems.add(item);
+        mItems.add(0, item);
         notifyItemAdded();
     }
 

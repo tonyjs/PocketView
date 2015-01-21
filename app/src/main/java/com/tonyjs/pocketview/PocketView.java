@@ -19,7 +19,7 @@ import android.view.animation.DecelerateInterpolator;
  * Created by tonyjs on 15. 1. 16..
  */
 public class PocketView extends ViewGroup
-                implements PocketViewAdapter.DataSetObserver{
+        implements PocketViewAdapter.DataSetObserver{
 
     public static final int DEFAULT_GAP = 48;
 
@@ -74,11 +74,11 @@ public class PocketView extends ViewGroup
             for (int i = 0; i < getChildCount(); i++) {
                 View child = getChildAt(i);
                 child.animate()
-                    .setInterpolator(null)
-                    .setDuration(250)
-                    .setStartDelay(0)
-                    .translationY(0)
-                    .setListener(null);
+                        .setInterpolator(null)
+                        .setDuration(250)
+                        .setStartDelay(0)
+                        .translationY(0)
+                        .setListener(null);
             }
             mInPullToDown = false;
         }
@@ -157,11 +157,11 @@ public class PocketView extends ViewGroup
             int childY = (int) child.getTranslationY();
             int y = childY + ((int) distanceY * ((max) - i));
             child.animate()
-                .setDuration(100)
-                .setInterpolator(null)
-                .setStartDelay(0)
-                .translationY(y)
-                .setListener(null);
+                    .setDuration(100)
+                    .setInterpolator(null)
+                    .setStartDelay(0)
+                    .translationY(y)
+                    .setListener(null);
         }
     }
 
@@ -205,11 +205,11 @@ public class PocketView extends ViewGroup
             int y = (int) distanceY * (i + 1);
 
             child.animate()
-                .setDuration(100)
-                .setInterpolator(null)
-                .setStartDelay(0)
-                .translationYBy(y)
-                .setListener(null);
+                    .setDuration(100)
+                    .setInterpolator(null)
+                    .setStartDelay(0)
+                    .translationYBy(y)
+                    .setListener(null);
         }
     }
 
@@ -217,6 +217,7 @@ public class PocketView extends ViewGroup
     public PocketViewAdapter getAdapter() {
         return mAdapter;
     }
+
     public void setAdapter(PocketViewAdapter adapter) {
         mAdapter = adapter;
         adapter.registerDataSetObserver(this);
@@ -270,15 +271,23 @@ public class PocketView extends ViewGroup
             return;
         }
 
-        if (mAnimateFirst) {
+        if (mFirstLayout) {
             layoutWithAnimateAtFirst();
             return;
         }
 
-        layoutWithAnimation();
+        if (mAddedLayout) {
+            layoutWithAnimation();
+            return;
+        }
+
+        for (int i = 0; i < max; i++) {
+            final View child = getChildAt(i);
+            child.setVisibility(View.VISIBLE);
+        }
     }
 
-    private boolean mAnimateFirst = true;
+    private boolean mFirstLayout = true;
     private void layoutWithAnimateAtFirst() {
         final int max = getChildCount();
         for (int i = 0; i < max; i++) {
@@ -288,37 +297,43 @@ public class PocketView extends ViewGroup
             if (child.getVisibility() != View.VISIBLE) {
                 child.setTranslationY(getBottom());
                 child.animate()
-                    .setInterpolator(new DecelerateInterpolator())
-                    .setStartDelay(delay)
-                    .setDuration(250)
-                    .translationY(0)
-                    .setListener(new AnimatorListenerAdapter() {
-                        @Override
-                        public void onAnimationStart(Animator animation) {
-                            if (child == null) {
-                                return;
+                        .setInterpolator(new DecelerateInterpolator())
+                        .setStartDelay(delay)
+                        .setDuration(250)
+                        .translationY(0)
+                        .setListener(new AnimatorListenerAdapter() {
+                            @Override
+                            public void onAnimationStart(Animator animation) {
+                                if (child == null) {
+                                    return;
+                                }
+                                child.setVisibility(View.VISIBLE);
                             }
-                            child.setVisibility(View.VISIBLE);
-                        }
 
-                        @Override
-                        public void onAnimationEnd(Animator animation) {
-                            if (index == max - 1) {
-                                mAnimateFirst = false;
+                            @Override
+                            public void onAnimationEnd(Animator animation) {
+                                if (index == max - 1) {
+                                    mFirstLayout = false;
+                                }
                             }
-                        }
-                    });
+                        });
             }
         }
     }
 
+    private boolean mAddedLayout = false;
     private void layoutWithAnimation() {
-        int max = getChildCount();
+        final int max = getChildCount();
         for (int i = 0; i < max; i++) {
             final View child = getChildAt(i);
-            if (child.getVisibility() != View.VISIBLE) {
-                child.setTranslationX(getRight());
-                child.animate()
+
+            if (child.getVisibility() == View.VISIBLE) {
+                continue;
+            }
+
+            final int index = i;
+            child.setTranslationX(getRight());
+            child.animate()
                     .setInterpolator(new AccelerateDecelerateInterpolator())
                     .setStartDelay(0)
                     .setDuration(250)
@@ -339,8 +354,14 @@ public class PocketView extends ViewGroup
                             }
                             child.setVisibility(View.VISIBLE);
                         }
+
+                        @Override
+                        public void onAnimationEnd(Animator animation) {
+//                            if (index == max - 1) {
+                                mAddedLayout = false;
+//                            }
+                        }
                     });
-            }
         }
     }
 
@@ -355,7 +376,8 @@ public class PocketView extends ViewGroup
 
     @Override
     public void notifyItemAdded() {
-        int position = (getItemCount() - 1);
+        mAddedLayout = true;
+        int position = 0;
         final View view = mAdapter.getView(position, this);
         view.setId(mAdapter.getItemId(position));
         addView(view, 0);
@@ -376,26 +398,26 @@ public class PocketView extends ViewGroup
         mInItemRemoved = true;
         final View target = getChildAt(position);
         target.animate()
-            .setInterpolator(new AccelerateInterpolator())
-            .setStartDelay(0)
-            .setDuration(250)
-            .translationX(getRight())
-            .setListener(new AnimatorListenerAdapter() {
-                @Override
-                public void onAnimationCancel(Animator animation) {
-                    removeItem(position, target);
-                }
+                .setInterpolator(new AccelerateInterpolator())
+                .setStartDelay(0)
+                .setDuration(250)
+                .translationX(getRight())
+                .setListener(new AnimatorListenerAdapter() {
+                    @Override
+                    public void onAnimationCancel(Animator animation) {
+                        removeItem(position, target);
+                    }
 
-                @Override
-                public void onAnimationPause(Animator animation) {
-                    removeItem(position, target);
-                }
+                    @Override
+                    public void onAnimationPause(Animator animation) {
+                        removeItem(position, target);
+                    }
 
-                @Override
-                public void onAnimationEnd(Animator animation) {
-                    removeItem(position, target);
-                }
-            });
+                    @Override
+                    public void onAnimationEnd(Animator animation) {
+                        removeItem(position, target);
+                    }
+                });
     }
 
     private void removeItem(int position, View target) {
@@ -516,12 +538,12 @@ public class PocketView extends ViewGroup
             int newTop = childY + (int) distanceY;
             final int top = Math.max(minTop, newTop);
             child.animate()
-                .setInterpolator(new DecelerateInterpolator())
-                .setStartDelay(0)
+                    .setInterpolator(new DecelerateInterpolator())
+                    .setStartDelay(0)
 //                .setDuration((int) Math.abs(distanceY))
-                .setDuration(250)
-                .translationY(top)
-                .setListener(null);
+                    .setDuration(250)
+                    .translationY(top)
+                    .setListener(null);
         }
     }
 
@@ -544,12 +566,12 @@ public class PocketView extends ViewGroup
             int newTop = childY + (int) distanceY;
             int top = Math.min(maxTop, newTop);
             child.animate()
-                .setInterpolator(new DecelerateInterpolator())
-                .setStartDelay(0)
+                    .setInterpolator(new DecelerateInterpolator())
+                    .setStartDelay(0)
 //                .setDuration((int) Math.abs(distanceY))
-                .setDuration(250)
-                .translationY(top)
-                .setListener(null);
+                    .setDuration(250)
+                    .translationY(top)
+                    .setListener(null);
         }
     }
 

@@ -70,6 +70,17 @@ public class MainActivity extends ActionBarActivity {
     }
 
     private class PocketAdapter extends PocketViewAdapter<Feed>{
+
+        private boolean mEditMode = false;
+        public void setEditMode(boolean editMode) {
+            mEditMode = editMode;
+            notifyDataSetChanged();
+        }
+
+        public boolean isEditMode() {
+            return mEditMode;
+        }
+
         @Override
         public View getView(int position, ViewGroup parent) {
             int color = Color.BLACK;
@@ -94,16 +105,19 @@ public class MainActivity extends ActionBarActivity {
             View view = getLayoutInflater().inflate(
                     R.layout.item_pocket_with_image, parent, false);
             CardView layoutBackground = (CardView) view.findViewById(R.id.layout_background);
-            layoutBackground.setCardBackgroundColor(color);
+//            layoutBackground.setCardBackgroundColor(color);
+
+            View vDelete = view.findViewById(R.id.v_delete);
+            vDelete.setVisibility(mEditMode ? View.VISIBLE : View.GONE);
 //                Log.d("jsp", "layoutBackground.getCardElevation() - " + layoutBackground.getCardElevation());
 //                layoutBackground.setCardElevation(15);
 //                layoutBackground.setBackgroundColor(color);
-//                ImageView ivThumb = (ImageView) convertView.findViewById(R.id.iv_thumb);
-//                if (!TextUtils.isEmpty(url)) {
-//                    loadImage(ivThumb, url);
-//                } else {
-//                    ivThumb.setImageDrawable(null);
-//                }
+                ImageView ivThumb = (ImageView) view.findViewById(R.id.iv_thumb);
+                if (!TextUtils.isEmpty(url)) {
+                    loadImage(ivThumb, url);
+                } else {
+                    ivThumb.setImageDrawable(null);
+                }
             return view;
         }
 
@@ -250,6 +264,11 @@ public class MainActivity extends ActionBarActivity {
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_add) {
             mAdapter.addItem(mAdapter.getItem(0));
+            return true;
+        }
+
+        if (id == R.id.action_edit) {
+            mAdapter.setEditMode(!mAdapter.isEditMode());
             return true;
         }
 

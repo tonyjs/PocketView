@@ -4,6 +4,10 @@
     tools:context=".MainActivity">
     <item android:id="@+id/action_add"
         android:title="add"
+        android:orderInCategory="98"
+        app:showAsAction="always"/>
+    <item android:id="@+id/action_edit"
+        android:title="edit"
         android:orderInCategory="99"
         app:showAsAction="always"/>
     <item android:id="@+id/action_remove"
