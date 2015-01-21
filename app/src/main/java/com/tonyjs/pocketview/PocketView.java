@@ -7,18 +7,13 @@ import android.graphics.Canvas;
 import android.support.v4.view.GestureDetectorCompat;
 import android.support.v4.view.MotionEventCompat;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewPropertyAnimator;
 import android.view.animation.AccelerateDecelerateInterpolator;
 import android.view.animation.AccelerateInterpolator;
-import android.view.animation.Animation;
 import android.view.animation.DecelerateInterpolator;
-import android.view.animation.LayoutAnimationController;
-import android.view.animation.TranslateAnimation;
 
 /**
  * Created by tonyjs on 15. 1. 16..
@@ -74,23 +69,7 @@ public class PocketView extends ViewGroup
         return mGestureDetector.onTouchEvent(ev);
     }
 
-    private void returnToOriginPosition() {
-        if (mInPullToUp) {
-            int max = getChildCount();
-            View firstView = getChildAt(0);
-            int maxHeight = firstView.getHeight() + ((max - 1) * mGap);
-            int minTop = (getHeight() - getPaddingBottom() - getPaddingTop()) - maxHeight;
-            for (int i = 0; i < getChildCount(); i++) {
-                View child = getChildAt(i);
-                child.animate()
-                    .setInterpolator(null)
-                    .setDuration(250)
-                    .setStartDelay(0)
-                    .translationY(minTop)
-                    .setListener(null);
-            }
-            mInPullToUp = false;
-        }
+    private void returnToOriginFromPullToDown() {
         if (mInPullToDown) {
             for (int i = 0; i < getChildCount(); i++) {
                 View child = getChildAt(i);
@@ -102,6 +81,25 @@ public class PocketView extends ViewGroup
                     .setListener(null);
             }
             mInPullToDown = false;
+        }
+    }
+
+    private void returnToOriginFromPullToUp() {
+        if (mInPullToUp) {
+            int max = getChildCount();
+            View firstView = getChildAt(0);
+            int maxHeight = firstView.getHeight() + ((max - 1) * mGap);
+            int minTop = (getHeight() - getPaddingBottom() - getPaddingTop()) - maxHeight;
+            for (int i = 0; i < getChildCount(); i++) {
+                View child = getChildAt(i);
+                child.animate()
+                        .setInterpolator(null)
+                        .setDuration(250)
+                        .setStartDelay(0)
+                        .translationY(minTop)
+                        .setListener(null);
+            }
+            mInPullToUp = false;
         }
     }
 
@@ -119,8 +117,9 @@ public class PocketView extends ViewGroup
             return;
         }
 
-        View firstView = getChildAt(0);
+        returnToOriginFromPullToDown();
 
+        View firstView = getChildAt(0);
         int maxHeight = firstView.getHeight() + ((max - 1) * mGap);
         int parentHeight = getHeight() - getPaddingBottom() - getPaddingTop();
         if (maxHeight <= parentHeight) {
@@ -171,6 +170,8 @@ public class PocketView extends ViewGroup
         if (max <= 0) {
             return;
         }
+
+        returnToOriginFromPullToUp();
 
         View firstView = getChildAt(0);
         if (firstView.getTranslationY() >= 0) {
@@ -442,7 +443,8 @@ public class PocketView extends ViewGroup
         @Override
         public boolean onSingleTapUp(MotionEvent e) {
 //            Log.d("jsp", "onSingleTapUp");
-            returnToOriginPosition();
+            returnToOriginFromPullToUp();
+            returnToOriginFromPullToDown();
             return true;
         }
 

@@ -3,6 +3,10 @@ package com.tonyjs.pocketview;
 import android.content.Context;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
+import android.widget.ListAdapter;
+import android.widget.SimpleAdapter;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,7 +35,8 @@ public abstract class PocketViewAdapter<T> {
 
     private List<T> mItems = new ArrayList<>();
     public void setItems(ArrayList<T> items){
-        mItems = items;
+        mItems.clear();
+        mItems.addAll(items);
         notifyDataSetChanged();
     }
 
@@ -62,11 +67,6 @@ public abstract class PocketViewAdapter<T> {
             return;
         }
 
-//        if (mItems.size() <= 0) {
-//            return;
-//        }
-//
-//        mItems.remove(position);
         notifyItemRemoved(position);
     }
 
