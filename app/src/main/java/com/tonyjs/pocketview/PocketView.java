@@ -7,19 +7,31 @@ import android.graphics.Canvas;
 import android.support.v4.view.GestureDetectorCompat;
 import android.support.v4.view.MotionEventCompat;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.GestureDetector;
+import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
+import android.view.SoundEffectConstants;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.AccelerateDecelerateInterpolator;
 import android.view.animation.AccelerateInterpolator;
 import android.view.animation.DecelerateInterpolator;
+import android.widget.Toast;
 
 /**
  * Created by tonyjs on 15. 1. 16..
  */
 public class PocketView extends ViewGroup
         implements PocketViewAdapter.DataSetObserver{
+
+    public interface OnItemClickListener {
+        public void onItemClick(PocketView parent, View child, int position);
+    }
+
+    public interface OnItemLongClickListener {
+        public void onItemLongClick(PocketView parent, View child, int position);
+    }
 
     public static final int DEFAULT_GAP = 48;
 
@@ -44,6 +56,16 @@ public class PocketView extends ViewGroup
         setWillNotDraw(false);
         mGap = (int) (getContext().getResources().getDisplayMetrics().density * DEFAULT_GAP);
         mGestureDetector = new PocketGestureDetector(getContext(), new PocketGestureListener());
+    }
+
+    private OnItemClickListener mOnItemClickListener;
+    public void setOnItemClickListener(OnItemClickListener onItemClickListener) {
+        mOnItemClickListener = onItemClickListener;
+    }
+
+    private OnItemLongClickListener mOnItemLongClickListener;
+    public void setOnItemLongClickListener(OnItemLongClickListener onItemLongClickListener) {
+        mOnItemLongClickListener = onItemLongClickListener;
     }
 
     @Override
@@ -225,6 +247,12 @@ public class PocketView extends ViewGroup
     }
 
     private void adaptView() {
+        float translateY = 0;
+        int childCount = getChildCount();
+        if (childCount > 0) {
+            translateY = getChildAt(0).getTranslationY();
+        }
+
         removeAllViews();
 
         int max = getItemCount();
@@ -235,6 +263,7 @@ public class PocketView extends ViewGroup
         for (int i = 0; i < max; i++) {
             View view = mAdapter.getView(i, this);
             view.setId(i);
+            view.setTranslationY(translateY);
             addView(view);
         }
     }
@@ -288,7 +317,12 @@ public class PocketView extends ViewGroup
     }
 
     private boolean mFirstLayout = true;
+    private boolean mInAnim = false;
     private void layoutWithAnimateAtFirst() {
+        if (mInAnim) {
+            return;
+        }
+        mInAnim = true;
         final int max = getChildCount();
         for (int i = 0; i < max; i++) {
             final View child = getChildAt(i);
@@ -299,7 +333,7 @@ public class PocketView extends ViewGroup
                 child.animate()
                         .setInterpolator(new DecelerateInterpolator())
                         .setStartDelay(delay)
-                        .setDuration(250)
+                        .setDuration(100)
                         .translationY(0)
                         .setListener(new AnimatorListenerAdapter() {
                             @Override
@@ -314,6 +348,7 @@ public class PocketView extends ViewGroup
                             public void onAnimationEnd(Animator animation) {
                                 if (index == max - 1) {
                                     mFirstLayout = false;
+                                    mInAnim = false;
                                 }
                             }
                         });
@@ -323,6 +358,10 @@ public class PocketView extends ViewGroup
 
     private boolean mAddedLayout = false;
     private void layoutWithAnimation() {
+        if (mInAnim) {
+            return;
+        }
+
         final int max = getChildCount();
         for (int i = 0; i < max; i++) {
             final View child = getChildAt(i);
@@ -330,7 +369,7 @@ public class PocketView extends ViewGroup
             if (child.getVisibility() == View.VISIBLE) {
                 continue;
             }
-
+            mInAnim = true;
             final int index = i;
             child.setTranslationX(getRight());
             child.animate()
@@ -353,13 +392,14 @@ public class PocketView extends ViewGroup
                                 return;
                             }
                             child.setVisibility(View.VISIBLE);
+                            mAddedLayout = false;
+                            mInAnim = false;
                         }
 
                         @Override
                         public void onAnimationEnd(Animator animation) {
-//                            if (index == max - 1) {
-                                mAddedLayout = false;
-//                            }
+                            mAddedLayout = false;
+                            mInAnim = false;
                         }
                     });
         }
@@ -383,7 +423,6 @@ public class PocketView extends ViewGroup
         addView(view, 0);
     }
 
-    private boolean mInItemRemoved = false;
     @Override
     public void notifyItemRemoved(final int position) {
         int max = getItemCount();
@@ -391,11 +430,11 @@ public class PocketView extends ViewGroup
             return;
         }
 
-        if (mInItemRemoved) {
+        if (mInAnim) {
             return;
         }
 
-        mInItemRemoved = true;
+        mInAnim = true;
         final View target = getChildAt(position);
         target.animate()
                 .setInterpolator(new AccelerateInterpolator())
@@ -427,13 +466,13 @@ public class PocketView extends ViewGroup
 
         if (getChildCount() <= 0) {
             mAdapter.getItems().clear();
-            mInItemRemoved = false;
+            mInAnim = false;
             return;
         }
 
         removeView(target);
         mAdapter.getItems().remove(position);
-        mInItemRemoved = false;
+        mInAnim = false;
     }
 
     private class PocketGestureDetector extends GestureDetectorCompat{
@@ -462,25 +501,88 @@ public class PocketView extends ViewGroup
             }
         }
 
+        private TouchTarget mTouchTarget;
+        @Override
+        public boolean onDown(MotionEvent e) {
+            if (mInAnim) {
+                return false;
+            }
+            Log.d("jsp", "onDown - " + mInAnim);
+            mTouchTarget = getChildByTouchPosition(e.getX(), e.getY());
+            return true;
+        }
+
+        @Override
+        public void onLongPress(MotionEvent e) {
+            if (mTouchTarget == null) {
+                return;
+            }
+
+            performItemLongClick(mTouchTarget);
+            mTouchTarget = null;
+        }
+
+        @Override
+        public void onShowPress(MotionEvent e) {
+            super.onShowPress(e);
+            if (mTouchTarget != null) {
+                View target = mTouchTarget.getTarget();
+                target.setPressed(true);
+            }
+        }
+
         @Override
         public boolean onSingleTapUp(MotionEvent e) {
 //            Log.d("jsp", "onSingleTapUp");
             returnToOriginFromPullToUp();
             returnToOriginFromPullToDown();
+            if (mOnScroll) {
+                mTouchTarget = null;
+                return true;
+            }
+
+            if (mTouchTarget != null) {
+                View target = mTouchTarget.getTarget();
+                target.setPressed(false);
+                performItemClick(mTouchTarget);
+                mTouchTarget = null;
+            }
             return true;
         }
 
+        private boolean mOnScroll = false;
         @Override
         public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
+            if (mTouchTarget != null) {
+                View target = mTouchTarget.getTarget();
+                target.setPressed(false);
+                mTouchTarget = null;
+            }
+
             if (Math.abs(distanceX) >= Math.abs(distanceY)) {
                 return false;
             }
+
+            mOnScroll = true;
             scroll(-distanceY);
+
+            postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    mOnScroll = false;
+                }
+            }, 500);
             return true;
         }
 
         @Override
         public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
+            if (mTouchTarget != null) {
+                View target = mTouchTarget.getTarget();
+                target.setPressed(false);
+                mTouchTarget = null;
+            }
+
             if (Math.abs(velocityX) >= Math.abs(velocityY)) {
                 return false;
             }
@@ -489,18 +591,6 @@ public class PocketView extends ViewGroup
             float distanceY = e2Y - e1Y;
 
             fling(distanceY);
-            return true;
-        }
-
-        @Override
-        public boolean onDown(MotionEvent e) {
-//            Log.d("jsp", "onDown");
-            return true;
-        }
-
-        @Override
-        public boolean onSingleTapConfirmed(MotionEvent e) {
-//            Log.d("jsp", "onSingleTapConfirmed");
             return true;
         }
     }
@@ -540,7 +630,6 @@ public class PocketView extends ViewGroup
             child.animate()
                     .setInterpolator(new DecelerateInterpolator())
                     .setStartDelay(0)
-//                .setDuration((int) Math.abs(distanceY))
                     .setDuration(250)
                     .translationY(top)
                     .setListener(null);
@@ -568,10 +657,97 @@ public class PocketView extends ViewGroup
             child.animate()
                     .setInterpolator(new DecelerateInterpolator())
                     .setStartDelay(0)
-//                .setDuration((int) Math.abs(distanceY))
                     .setDuration(250)
                     .translationY(top)
                     .setListener(null);
+        }
+    }
+
+    private TouchTarget getChildByTouchPosition(float x, float y){
+        int max = getChildCount();
+        if (max <= 0) {
+            return null;
+        }
+
+        TouchTarget target = null;
+        for (int i = 0; i < max; i++) {
+            View child = getChildAt(i);
+            float left = child.getX();
+            float top = child.getY();
+            int childWidth = child.getWidth();
+            int childHeight = child.getHeight();
+            int gap = i == max - 1 ? childHeight : mGap;
+            float right = left + childWidth;
+            float bottom = top + gap;
+//            Log.e("jsp", "x = " + left);
+//            Log.e("jsp", "y = " + top);
+//            Log.e("jsp", "width = " + childWidth);
+//            Log.e("jsp", "height = " + childHeight);
+
+            if (x >= left && x <= right && y >= top && y <= bottom) {
+                target = new TouchTarget(i, child);
+                break;
+            }
+        }
+        return target;
+    }
+
+    private void performItemClick(TouchTarget touchTarget) {
+        if (mOnItemClickListener == null) {
+            return;
+        }
+
+        if (touchTarget == null) {
+            return;
+        }
+
+        int position = touchTarget.getPosition();
+        View target = touchTarget.getTarget();
+        target.playSoundEffect(SoundEffectConstants.CLICK);
+        mOnItemClickListener.onItemClick(this, target, position);
+    }
+
+    private void performItemLongClick(TouchTarget touchTarget) {
+        if (mOnItemLongClickListener == null) {
+            return;
+        }
+
+        if (touchTarget == null) {
+            return;
+        }
+
+        int position = touchTarget.getPosition();
+        View target = touchTarget.getTarget();
+        target.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+        mOnItemLongClickListener.onItemLongClick(this, target, position);
+    }
+
+    private class TouchTarget {
+        private int position;
+        private View target;
+
+        private TouchTarget() {
+        }
+
+        private TouchTarget(int position, View target) {
+            this.position = position;
+            this.target = target;
+        }
+
+        public int getPosition() {
+            return position;
+        }
+
+        public void setPosition(int position) {
+            this.position = position;
+        }
+
+        public View getTarget() {
+            return target;
+        }
+
+        public void setTarget(View target) {
+            this.target = target;
         }
     }
 
