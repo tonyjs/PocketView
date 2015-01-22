@@ -8,6 +8,7 @@ import java.util.ArrayList;
  * Created by tonyjs on 15. 1. 7..
  */
 public class Feed extends BaseObject {
+    private int color;
     @SerializedName("tags") private ArrayList<String> tags;
     @SerializedName("type") private String type;
     @SerializedName("comments") private Comments comments;
@@ -20,6 +21,14 @@ public class Feed extends BaseObject {
     @SerializedName("user_has_liked") private boolean userLiked;
     @SerializedName("id") private String id;
     @SerializedName("user") private User user;
+
+    public int getColor() {
+        return color;
+    }
+
+    public void setColor(int color) {
+        this.color = color;
+    }
 
     public ArrayList<String> getTags() {
         return tags;
