@@ -58,6 +58,10 @@ public class PocketView extends ViewGroup
         mGestureDetector = new PocketGestureDetector(getContext(), new PocketGestureListener());
     }
 
+    public void setGap(int gap) {
+        mGap = gap;
+    }
+
     private OnItemClickListener mOnItemClickListener;
     public void setOnItemClickListener(OnItemClickListener onItemClickListener) {
         mOnItemClickListener = onItemClickListener;
