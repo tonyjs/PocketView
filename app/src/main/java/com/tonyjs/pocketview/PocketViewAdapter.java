@@ -63,12 +63,18 @@ public abstract class PocketViewAdapter<T> {
         notifyDataSetChanged();
     }
 
-    public void removeItem(int position) {
+    public void removeItem(T item) {
+        int position = getPosition(item);
+
         if (position < 0) {
             return;
         }
 
         notifyItemRemoved(position);
+    }
+
+    public int getPosition(T item) {
+        return mItems.indexOf(item);
     }
 
     public List<T> getItems() {

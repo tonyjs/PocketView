@@ -9,6 +9,11 @@ import java.util.ArrayList;
  */
 public class Feed extends BaseObject {
     private int color;
+    public Feed(){}
+    public Feed(int color) {
+        this.color = color;
+    }
+
     @SerializedName("tags") private ArrayList<String> tags;
     @SerializedName("type") private String type;
     @SerializedName("comments") private Comments comments;

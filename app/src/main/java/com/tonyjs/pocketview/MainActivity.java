@@ -135,7 +135,7 @@ public class MainActivity extends ActionBarActivity
             View view = getLayoutInflater().inflate(
                     R.layout.item_pocket_with_image, parent, false);
 
-            Feed item = getItem(position);
+            final Feed item = getItem(position);
             int color = item != null ? item.getColor() : Color.TRANSPARENT;
 
             CardView cardView = (CardView) view.findViewById(R.id.layout_background);
@@ -146,7 +146,7 @@ public class MainActivity extends ActionBarActivity
             vDelete.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    PocketAdapter.this.removeItem(position);
+                    removeItem(item);
                 }
             });
             return view;
@@ -184,7 +184,7 @@ public class MainActivity extends ActionBarActivity
         }
 
         if (id == R.id.action_remove) {
-            mAdapter.removeItem(0);
+            mAdapter.removeItem(mAdapter.getItem(0));
             return true;
         }
 

@@ -88,7 +88,7 @@ public class PocketView extends ViewGroup
         if (getAdapter() == null || getAdapter().getCount() <= 0) {
             return false;
         }
-        return true;
+        return super.onInterceptTouchEvent(ev);
     }
 
     @Override
@@ -514,7 +514,6 @@ public class PocketView extends ViewGroup
             if (mInAnim) {
                 return false;
             }
-            Log.d("jsp", "onDown - " + mInAnim);
             mTouchTarget = getChildByTouchPosition(e.getX(), e.getY());
             return true;
         }
