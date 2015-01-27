@@ -21,7 +21,8 @@
             </intent-filter>
         </activity>
 
-        <activity android:name=".FuckingActivity"/>
+        <activity android:name=".WithNetworkActivity"/>
+
     </application>
 
 </manifest>

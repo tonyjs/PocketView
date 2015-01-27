@@ -7,6 +7,7 @@ import android.graphics.Color;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.support.v7.widget.CardView;
+import android.text.TextUtils;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -30,7 +31,6 @@ import retrofit.client.Response;
 import java.util.ArrayList;
 import java.util.List;
 
-
 public class WithNetworkActivity extends ActionBarActivity {
 
     private PocketAdapter mAdapter;
@@ -40,13 +40,12 @@ public class WithNetworkActivity extends ActionBarActivity {
         setContentView(R.layout.activity_main);
 
         PocketView pocketView = (PocketView) findViewById(R.id.pocket_view);
+        pocketView.setGap((int) (getResources().getDisplayMetrics().density * 70));
+        pocketView.addScrollCallback(PocketView.getScrollCallback(findViewById(R.id.slip_target)));
         pocketView.setOnItemClickListener(new PocketView.OnItemClickListener() {
             @Override
             public void onItemClick(PocketView parent, View child, int position) {
-                Feed item = mAdapter.getItem(position);
-                Intent intent = new Intent(getApplicationContext(), FuckingActivity.class);
-                intent.putExtra("color", item.getColor());
-                startActivity(intent);
+                Toast.makeText(getApplicationContext(), "onItemClick ! position = " + position, Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -80,23 +79,14 @@ public class WithNetworkActivity extends ActionBarActivity {
         });
     }
 
-//    final int[] sColors = new int[]{
-//            Color.argb(160, 160, 50, 50),
-//            Color.argb(160, 50, 160, 50),
-//            Color.argb(160, 160, 50, 160),
-//            Color.argb(160, 160, 100, 50),
-//            Color.argb(160, 160, 50, 100),
-//            Color.argb(160, 50, 160, 100),
-//            Color.argb(160, 50, 100, 160),
-//            Color.argb(160, 100, 160, 50),
-//            Color.argb(160, 100, 50, 160),
-//            Color.argb(160, 120, 200, 60),
-//            Color.argb(160, 200, 60, 120),
-//            Color.argb(160, 60, 120, 200),
-//            Color.argb(160, 120, 60, 200),
-//            Color.argb(160, 60, 200, 120),
-//            Color.argb(160, 200, 120, 60)
-//    };
+    @Override
+    public void onBackPressed() {
+        if (mAdapter.isEditMode()) {
+            mAdapter.setEditMode(false);
+            return;
+        }
+        super.onBackPressed();
+    }
 
     final int[] sColors = new int[]{
             Color.rgb(160, 50, 50),
@@ -150,7 +140,7 @@ public class WithNetworkActivity extends ActionBarActivity {
         }
 
         @Override
-        public View getView(int position, ViewGroup parent) {
+        public View getView(final int position, ViewGroup parent) {
             Feed item = getItem(position);
             int color = item != null ? item.getColor() : Color.TRANSPARENT;
             Images images = item != null ? item.getImages() : null;
@@ -166,40 +156,30 @@ public class WithNetworkActivity extends ActionBarActivity {
             View vDelete = view.findViewById(R.id.v_delete);
             vDelete.setVisibility(mEditMode ? View.VISIBLE : View.GONE);
 
+            vDelete.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    PocketAdapter.this.removeItem(position);
+                }
+            });
+
             ImageView ivThumb = (ImageView) view.findViewById(R.id.iv_thumb);
-//            if (!TextUtils.isEmpty(url)) {
-//                loadImage(ivThumb, url);
-//            } else {
-//                ivThumb.setImageDrawable(null);
-//            }
+            if (!TextUtils.isEmpty(url)) {
+                loadImage(ivThumb, url);
+            } else {
+                ivThumb.setImageDrawable(null);
+            }
             return view;
         }
     }
 
+    private ImageLoader mImageLoader;
     private void loadImage(ImageView ivThumb, String url) {
-        Glide.with(this).load(url)
-                .asBitmap()
-                .transform(new CircleTransform(this))
-                .into(ivThumb);
-    }
-
-    public static class CircleTransform extends BitmapTransformation {
-        private Context mContext;
-        public CircleTransform(Context context) {
-            super(context);
-            mContext = context;
+        if (mImageLoader == null) {
+            mImageLoader = new ImageLoader(this);
         }
 
-        @Override
-        protected Bitmap transform(BitmapPool pool, Bitmap toTransform, int outWidth, int outHeight) {
-            RoundedDrawable roundedDrawable = new RoundedDrawable(mContext, toTransform);
-            return roundedDrawable.getBitmap();
-        }
-
-        @Override
-        public String getId() {
-            return "com.orcpark.hashtagram.circletransform";
-        }
+        mImageLoader.load(ivThumb, url, ImageLoader.TransformationType.ROUNDED_CORNER);
     }
 
     @Override

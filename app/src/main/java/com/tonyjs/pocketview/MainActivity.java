@@ -59,6 +59,15 @@ public class MainActivity extends ActionBarActivity
         mAdapter.setItems(getFeeds());
     }
 
+    @Override
+    public void onBackPressed() {
+        if (mAdapter.isEditMode()) {
+            mAdapter.setEditMode(false);
+            return;
+        }
+        super.onBackPressed();
+    }
+
     final int[] sColors = new int[]{
             Color.rgb(160, 50, 50),
             Color.rgb(50, 160, 50),
@@ -100,15 +109,12 @@ public class MainActivity extends ActionBarActivity
 
     @Override
     public void onItemClick(PocketView parent, View child, int position) {
-        Feed item = mAdapter.getItem(position);
-        Intent intent = new Intent(this, FuckingActivity.class);
-        intent.putExtra("color", item.getColor());
-        startActivity(intent);
+        Toast.makeText(this, "onItemClick ! position = " + position, Toast.LENGTH_SHORT).show();
     }
 
     @Override
     public void onItemLongClick(PocketView parent, View child, int position) {
-        Toast.makeText(this, "LongClick ! position = " + position, Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "onItemLongClick ! position = " + position, Toast.LENGTH_SHORT).show();
         mAdapter.setEditMode(true);
     }
 
@@ -125,7 +131,7 @@ public class MainActivity extends ActionBarActivity
         }
 
         @Override
-        public View getView(int position, ViewGroup parent) {
+        public View getView(final int position, ViewGroup parent) {
             View view = getLayoutInflater().inflate(
                     R.layout.item_pocket_with_image, parent, false);
 
@@ -137,7 +143,12 @@ public class MainActivity extends ActionBarActivity
 
             View vDelete = view.findViewById(R.id.v_delete);
             vDelete.setVisibility(mEditMode ? View.VISIBLE : View.GONE);
-
+            vDelete.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    PocketAdapter.this.removeItem(position);
+                }
+            });
             return view;
         }
     }
@@ -155,6 +166,11 @@ public class MainActivity extends ActionBarActivity
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
+
+        if (id == R.id.action_with_network) {
+            startActivity(new Intent(this, WithNetworkActivity.class));
+            return true;
+        }
 
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_add) {
