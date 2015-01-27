@@ -44,8 +44,9 @@ public class MainActivity extends ActionBarActivity
         setContentView(R.layout.activity_main);
 
         mPocketView = (PocketView) findViewById(R.id.pocket_view);
+        mPocketView.setGap((int) (getResources().getDisplayMetrics().density * 70));
+        mPocketView.addScrollCallback(PocketView.getScrollCallback(findViewById(R.id.slip_target)));
         mPocketView.setOnItemClickListener(this);
-
         mPocketView.setOnItemLongClickListener(this);
 
         mAdapter = new PocketAdapter();

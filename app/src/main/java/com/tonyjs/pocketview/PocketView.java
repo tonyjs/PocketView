@@ -17,7 +17,8 @@ import android.view.ViewGroup;
 import android.view.animation.AccelerateDecelerateInterpolator;
 import android.view.animation.AccelerateInterpolator;
 import android.view.animation.DecelerateInterpolator;
-import android.widget.Toast;
+
+import java.util.ArrayList;
 
 /**
  * Created by tonyjs on 15. 1. 16..
@@ -143,6 +144,7 @@ public class PocketView extends ViewGroup
             return;
         }
 
+        handleSlipTarget((int) distanceY);
         returnToOriginFromPullToDown();
 
         View firstView = getChildAt(0);
@@ -165,6 +167,7 @@ public class PocketView extends ViewGroup
             final int top = Math.max(minTop, newTop);
             child.setTranslationY(top);
         }
+
     }
 
     boolean mInPullToUp = false;
@@ -196,7 +199,7 @@ public class PocketView extends ViewGroup
         if (max <= 0) {
             return;
         }
-
+        handleSlipTarget((int) distanceY);
         returnToOriginFromPullToUp();
 
         View firstView = getChildAt(0);
@@ -537,7 +540,6 @@ public class PocketView extends ViewGroup
 
         @Override
         public boolean onSingleTapUp(MotionEvent e) {
-//            Log.d("jsp", "onSingleTapUp");
             returnToOriginFromPullToUp();
             returnToOriginFromPullToDown();
             if (mOnScroll) {
@@ -569,7 +571,7 @@ public class PocketView extends ViewGroup
 
             mOnScroll = true;
             scroll(-distanceY);
-
+//            handleSlipTarget((int) -distanceY);
             postDelayed(new Runnable() {
                 @Override
                 public void run() {
@@ -683,11 +685,6 @@ public class PocketView extends ViewGroup
             int gap = i == max - 1 ? childHeight : mGap;
             float right = left + childWidth;
             float bottom = top + gap;
-//            Log.e("jsp", "x = " + left);
-//            Log.e("jsp", "y = " + top);
-//            Log.e("jsp", "width = " + childWidth);
-//            Log.e("jsp", "height = " + childHeight);
-
             if (x >= left && x <= right && y >= top && y <= bottom) {
                 target = new TouchTarget(i, child);
                 break;
@@ -755,4 +752,136 @@ public class PocketView extends ViewGroup
         }
     }
 
+    public interface ScrollCallback {
+        public void onScroll(int amountOfScroll);
+
+        public void onScrollForcibly(int amountOfScroll);
+
+        public void scrollToEnd();
+    }
+
+    public static class DefaultScrollCallback implements ScrollCallback {
+        public enum Direction {
+            UP, DOWN
+        }
+
+        private int mSlipDistance;
+        private View mTargetView;
+        private Direction mDirection = Direction.UP;
+        public DefaultScrollCallback(View targetView) {
+            this(targetView, targetView.getHeight());
+        }
+
+        public DefaultScrollCallback(View targetView, int slipDistance) {
+            this(targetView, slipDistance, Direction.UP);
+        }
+
+        public DefaultScrollCallback(View targetView, int slipDistance, Direction direction) {
+            mTargetView = targetView;
+            mSlipDistance = slipDistance;
+            mDirection = direction;
+        }
+
+        @Override
+        public void onScroll(int amountOfScroll) {
+            if (mSlipDistance == 0) {
+                mSlipDistance = mTargetView.getHeight();
+            }
+
+            int translateY = (int) mTargetView.getTranslationY();
+            int maxTop = -mSlipDistance;
+            int newTop = Math.max(maxTop, translateY + amountOfScroll);
+
+            int result = Math.min(0, newTop);
+            mTargetView.setTranslationY(result);
+        }
+
+        @Override
+        public void onScrollForcibly(int amountOfScroll) {
+            mTargetView.setTranslationY(amountOfScroll);
+        }
+
+        @Override
+        public void scrollToEnd() {
+            if (mSlipDistance == 0) {
+                mSlipDistance = mTargetView.getHeight();
+            }
+
+            mTargetView.setTranslationY(-mSlipDistance);
+        }
+
+        public void show() {
+            mTargetView.setTranslationY(0);
+        }
+
+        public View getTargetView() {
+            return mTargetView;
+        }
+
+        public boolean isOnOriginalPosition(){
+            return mTargetView.getTop() == 0;
+        }
+    }
+
+    // Handle Slip Target
+    public void handleSlipTarget(int amountOfScroll) {
+        if (mScrollCallbacks.size() <= 0) {
+            return;
+        }
+
+        int max = getChildCount();
+        if (max <= 0) {
+            return;
+        }
+
+        View firstView = getChildAt(0);
+        int maxHeight = firstView.getHeight() + ((max - 1) * mGap);
+        int parentHeight = getHeight() - getPaddingBottom() - getPaddingTop();
+        if (maxHeight <= parentHeight) {
+            return;
+        }
+
+        float translationY = firstView.getTranslationY();
+        if (translationY >= 0) {
+            for (ScrollCallback callback : mScrollCallbacks) {
+                callback.onScrollForcibly(0);
+            }
+            return;
+        }
+
+        int minTop = (getHeight() - getPaddingBottom() - getPaddingTop()) - maxHeight;
+        if (translationY <= minTop) {
+            for (ScrollCallback callback : mScrollCallbacks) {
+                callback.scrollToEnd();
+            }
+            return;
+        }
+
+        for (ScrollCallback callback : mScrollCallbacks) {
+            callback.onScroll(amountOfScroll);
+        }
+    }
+
+    private ArrayList<ScrollCallback> mScrollCallbacks = new ArrayList<>();
+
+    public void addScrollCallback(ScrollCallback scrollCallback) {
+        if (!mScrollCallbacks.contains(scrollCallback)) {
+            mScrollCallbacks.add(scrollCallback);
+        }
+    }
+
+    public static ScrollCallback getScrollCallback(View targetView) {
+        return new DefaultScrollCallback(targetView);
+    }
+
+    public static ScrollCallback getScrollCallback(
+            Context context, View targetView, int slipDistance) {
+        return new DefaultScrollCallback(targetView, slipDistance);
+    }
+
+    public static ScrollCallback getScrollCallback(
+            Context context, View targetView,
+            int slipDistance, DefaultScrollCallback.Direction direction) {
+        return new DefaultScrollCallback(targetView, slipDistance, direction);
+    }
 }
