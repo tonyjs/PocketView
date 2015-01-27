@@ -1,6 +1,7 @@
 package com.tonyjs.pocketview;
 
 import android.content.Context;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
@@ -27,10 +28,16 @@ public abstract class PocketViewAdapter<T> {
     private Context mContext;
     public PocketViewAdapter(Context context) {
         mContext = context;
+        mInflater = LayoutInflater.from(context);
     }
 
     public Context getConext() {
         return mContext;
+    }
+
+    private LayoutInflater mInflater;
+    public LayoutInflater getLayoutInflater() {
+        return mInflater;
     }
 
     private List<T> mItems = new ArrayList<>();
