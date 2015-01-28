@@ -57,7 +57,7 @@ public class WithNetworkActivity extends ActionBarActivity {
             }
         });
 
-        mAdapter = new PocketAdapter();
+        mAdapter = new PocketAdapter(this);
         pocketView.setAdapter(mAdapter);
         RestAdapter restAdapter = new RestAdapter.Builder()
                 .setLogLevel(RestAdapter.LogLevel.FULL)
@@ -128,6 +128,9 @@ public class WithNetworkActivity extends ActionBarActivity {
     }
 
     private class PocketAdapter extends PocketViewAdapter<Feed>{
+        private PocketAdapter(Context context) {
+            super(context);
+        }
 
         private boolean mEditMode = false;
         public void setEditMode(boolean editMode) {
@@ -141,7 +144,7 @@ public class WithNetworkActivity extends ActionBarActivity {
 
         @Override
         public View getView(final int position, ViewGroup parent) {
-            Feed item = getItem(position);
+            final Feed item = getItem(position);
             int color = item != null ? item.getColor() : Color.TRANSPARENT;
             Images images = item != null ? item.getImages() : null;
             ImageResolution standard = images != null ? images.getStandard() : null;
@@ -159,7 +162,7 @@ public class WithNetworkActivity extends ActionBarActivity {
             vDelete.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    PocketAdapter.this.removeItem(position);
+                    PocketAdapter.this.removeItem(item);
                 }
             });
 
@@ -208,7 +211,7 @@ public class WithNetworkActivity extends ActionBarActivity {
         }
 
         if (id == R.id.action_remove) {
-            mAdapter.removeItem(0);
+            mAdapter.removeItem(mAdapter.getItem(0));
             return true;
         }
 

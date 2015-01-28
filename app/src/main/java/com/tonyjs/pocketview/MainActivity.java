@@ -49,7 +49,7 @@ public class MainActivity extends ActionBarActivity
         mPocketView.setOnItemClickListener(this);
         mPocketView.setOnItemLongClickListener(this);
 
-        mAdapter = new PocketAdapter();
+        mAdapter = new PocketAdapter(this);
         mPocketView.setAdapter(mAdapter);
     }
 
@@ -115,10 +115,14 @@ public class MainActivity extends ActionBarActivity
     @Override
     public void onItemLongClick(PocketView parent, View child, int position) {
         Toast.makeText(this, "onItemLongClick ! position = " + position, Toast.LENGTH_SHORT).show();
-        mAdapter.setEditMode(true);
+        mAdapter.setEditMode(!mAdapter.isEditMode());
     }
 
     private class PocketAdapter extends PocketViewAdapter<Feed>{
+
+        private PocketAdapter(Context context) {
+            super(context);
+        }
 
         private boolean mEditMode = false;
         public void setEditMode(boolean editMode) {
